@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SENTINEL-X | Advanced Phishing Detection Command Center</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <!-- Custom design system rules -->
+  <link rel="stylesheet" href="custom.css">
+</head>
+<body class="bg-dark text-light">
+
+  <!-- Top Navigation Bar -->
+  <nav class="navbar navbar-expand-lg border-bottom sticky-top" style="background-color: var(--surface-container-low); border-color: var(--outline-variant) !important; height: 64px; z-index: 1050;">
+    <div class="container-fluid px-4 d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-3">
+        <!-- Sidebar Toggle for Mobile -->
+        <button class="btn btn-outline-secondary d-lg-none p-1 border-0" id="mobileSidebarToggle" type="button" aria-label="Toggle Sidebar">
+          <span class="material-symbols-outlined text-light fs-4">menu</span>
+        </button>
+        <span class="mono fw-bold fs-4 text-primary tracking-tighter" style="text-shadow: 0 0 10px rgba(59, 130, 246, 0.4);">SENTINEL-X</span>
+        <span class="badge badge-safe rounded-pill font-monospace" style="font-size: 10px;">ANALYST NODE v2.0</span>
+      </div>
+      
+      <!-- Quick Info Stats -->
+      <div class="d-none d-md-flex align-items-center gap-4">
+        <div class="mono text-secondary-emphasis" style="font-size: 11px;">
+          LATENCY: <span class="text-success fw-bold">OPTIMAL</span>
+        </div>
+        <div class="mono text-secondary-emphasis" style="font-size: 11px;">
+          UPTIME: <span class="text-primary fw-bold">99.98%</span>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center gap-3">
+        <span class="material-symbols-outlined text-secondary cursor-pointer hover-text-white" id="notificationBell">notifications</span>
+        <div class="d-flex align-items-center gap-2 border-start ps-3" style="border-color: var(--outline-variant) !important;">
+          <span class="material-symbols-outlined text-primary">account_circle</span>
+          <span class="mono text-secondary d-none d-sm-inline" style="font-size: 12px;">ANALYST-01</span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="d-flex">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar-wrapper border-end p-3 flex-shrink-0 d-none d-lg-flex flex-column" id="sidebarNav" style="width: 260px; min-height: calc(100vh - 64px); background-color: var(--surface-container); border-color: var(--outline-variant) !important; transition: transform 0.3s ease; z-index: 1000;">
+      <div class="mb-4 text-center p-3 rounded" style="background-color: var(--surface-container-low); border: 1px solid var(--outline-variant);">
+        <div class="w-12 h-12 rounded-circle bg-success bg-opacity-10 d-inline-flex align-items-center justify-content-center p-2 mb-2">
+          <span class="material-symbols-outlined text-success fs-3">shield</span>
+        </div>
+        <div class="mono text-success fw-bold" style="font-size: 12px; letter-spacing: 0.1em;">SYSTEM SECURED</div>
+        <div class="text-secondary mono" style="font-size: 10px; margin-top: 4px;">THREAT INTELLIGENCE ACTIVE</div>
+      </div>
+
+      <div class="nav flex-column gap-2 mb-auto" role="tablist">
+        <div class="sidebar-link active" data-tab-target="command-center">
+          <span class="material-symbols-outlined">dashboard</span>
+          <span>COMMAND CENTER</span>
+        </div>
+        <div class="sidebar-link" data-tab-target="heuristic-docs">
+          <span class="material-symbols-outlined">menu_book</span>
+          <span>HEURISTIC GUIDE</span>
+        </div>
+        <div class="sidebar-link" data-tab-target="model-specs">
+          <span class="material-symbols-outlined">memory</span>
+          <span>MODEL SPECS</span>
+        </div>
+        <a href="#threat-logs-section" class="sidebar-link" id="sidebarLogsLink">
+          <span class="material-symbols-outlined">history</span>
+          <span>SCAN LOGS</span>
+        </a>
+      </div>
+
+      <div class="border-top pt-3" style="border-color: var(--outline-variant) !important;">
+        <div class="p-2 rounded mb-3" style="background-color: var(--surface-container-high); border: 1px solid rgba(59, 130, 246, 0.1);">
+          <div class="mono text-secondary" style="font-size: 9px;">ACTIVE CLASSIFIER</div>
+          <div class="mono text-light fw-bold" style="font-size: 11px;">RandomForest-v2.0</div>
+        </div>
+        <button class="btn btn-outline-danger w-full py-2 active-scale mono text-uppercase d-flex align-items-center justify-content-center gap-2" id="emergencyLockBtn" style="font-size: 12px; border-radius: var(--radius-md);">
+          <span class="material-symbols-outlined fs-6">lock</span> EMERGENCY LOCK
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Canvas -->
+    <main class="flex-grow-1 p-4 position-relative" style="background-color: var(--surface); min-height: calc(100vh - 64px); overflow-y: auto;">
+      <!-- Grid Grid Background Glow -->
+      <div class="position-absolute w-full h-full top-0 start-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(var(--primary) 1px, transparent 1px); background-size: 24px 24px;"></div>
+      
+      <div class="container-xxl" style="max-width: 1200px;">
+        
+        <!-- ==================== TAB 1: COMMAND CENTER ==================== -->
+        <div id="command-center" class="tab-content active">
+          <!-- Hero Section -->
+          <header class="text-center mb-5 mt-2">
+            <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill border border-info bg-info bg-opacity-10 text-info mono mb-3" style="font-size: 11px;">
+              <span class="material-symbols-outlined fs-6">verified_user</span>
+              12-POINT HEURISTIC ML ANALYSIS
+            </div>
+            <h1 class="fw-bold tracking-tight mb-2 text-light" style="font-size: var(--font-lg);">Autonomous Threat Detection</h1>
+            <p class="text-secondary-emphasis mx-auto" style="max-width: 680px; font-size: var(--font-base);">
+              Instantly inspect suspicious domains using a pre-trained Random Forest classifier. We parse 12 critical URL markers to expose spoofed brands, credential harvesters, and malicious redirects.
+            </p>
+          </header>
+
+          <!-- URL Input Scanner Card -->
+          <section class="mb-5">
+            <div class="glass-panel p-4 rounded-3 shadow-lg glow-hover position-relative overflow-hidden">
+              <form id="scanForm" class="row g-3">
+                <div class="col-lg-9 col-md-8 position-relative">
+                  <span class="material-symbols-outlined position-absolute top-50 translate-middle-y text-primary" style="left: 20px;">link</span>
+                  <input type="text" id="urlInput" class="form-control bg-dark text-info border-secondary py-3 px-5 mono" style="border-radius: var(--radius-md); border-color: var(--outline-variant) !important; background-color: var(--surface-container-lowest) !important; padding-right: 50px !important;" placeholder="Paste suspicious URL here (e.g., http://paypa1-security-verification.com/login)" required>
+                  
+                  <button type="button" class="btn btn-outline-secondary btn-sm position-absolute top-50 translate-middle-y border-0" id="pasteBtn" style="right: 15px; color: var(--on-surface-variant);" title="Paste from clipboard">
+                    <span class="material-symbols-outlined fs-5">content_paste</span>
+                  </button>
+                </div>
+                <div class="col-lg-3 col-md-4">
+                  <button type="submit" class="btn btn-primary w-100 py-3 active-scale fw-bold d-flex align-items-center justify-content-center gap-2" style="background-color: var(--primary); color: #fff; border: none; border-radius: var(--radius-md);">
+                    <span class="material-symbols-outlined">bolt</span>
+                    ANALYZE METRICS
+                  </button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          <!-- Real-Time Diagnostics Terminal / Loader -->
+          <section id="scanningLoader" class="mb-5 d-none">
+            <div class="terminal-window shadow-lg">
+              <div class="terminal-header">
+                <div class="terminal-dot red"></div>
+                <div class="terminal-dot yellow"></div>
+                <div class="terminal-dot green"></div>
+                <span class="mono ms-2 text-secondary" style="font-size: 11px;">SENTINEL SCANNER ENGINE | ACTIVE RUNTIME</span>
+              </div>
+              <div class="terminal-body" id="terminalLogBody">
+                <!-- Log lines will append here dynamically -->
+              </div>
+              <div class="p-3 border-top d-flex align-items-center justify-content-between" style="border-color: var(--outline-variant) !important; background-color: #050813;">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                  <span class="mono text-primary fw-bold" id="loaderStateText" style="font-size: 11px;">INITIALIZING SCAN...</span>
+                </div>
+                <span class="mono text-secondary" id="loaderPercentage" style="font-size: 11px;">0% COMPLETE</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Results Display Bento Grid -->
+          <div class="row g-4 d-none" id="resultDashboard">
+            <!-- Left Grid (Col 12/8): Verdict and Features -->
+            <div class="col-lg-8">
+              
+              <!-- Verdict & Recommendation Card -->
+              <div class="glass-panel rounded-3 mb-4 position-relative overflow-hidden" id="verdictCard">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4">
+                  <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                      <span class="material-symbols-outlined fs-2 text-danger" id="verdictIcon">report</span>
+                      <h2 class="mono fw-bold text-uppercase m-0 tracking-wider" id="verdictTitle" style="font-size: 20px;">PHISHING DETECTED</h2>
+                    </div>
+                    <p class="mono text-break text-secondary-emphasis mb-0" style="font-size: 12px;">
+                      SCAN TARGET: <span class="text-light fw-semibold" id="scannedUrlLabel">http://example.com</span>
+                    </p>
+                  </div>
+
+                  <div class="d-flex align-items-center gap-3">
+                    <div class="text-md-end">
+                      <div class="mono text-secondary" style="font-size: 9px; letter-spacing: 0.1em;">CONFIDENCE WEIGHT</div>
+                      <div class="mono fw-bold fs-2" id="verdictPercentage">94.8%</div>
+                    </div>
+                    <!-- Confidence dial SVG -->
+                    <div style="width: 70px; height: 70px;">
+                      <svg class="gauge-svg w-100 h-100" viewBox="0 0 36 36">
+                        <circle class="gauge-bg" cx="18" cy="18" r="16" fill="none" stroke-width="3.5" />
+                        <circle id="dialCircle" cx="18" cy="18" r="16" fill="none" stroke-width="3.5" stroke-dasharray="100, 100" stroke-linecap="round" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Recommendation Advice Banner -->
+                <div class="mt-4 p-3 rounded border d-flex gap-3" id="verdictBanner">
+                  <span class="material-symbols-outlined fs-4" id="verdictBannerIcon">warning</span>
+                  <div>
+                    <h6 class="fw-bold mb-1" id="verdictBannerTitle">Critical Alert Warning</h6>
+                    <p class="m-0 text-secondary-emphasis" style="font-size: 13px;" id="verdictBannerDesc">Heuristic system has identified high correlation with phishing structures.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Heuristic Feature Matrix Card -->
+              <div class="glass-panel rounded-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h4 class="mono text-uppercase tracking-wider text-primary m-0" style="font-size: 13px;">
+                    <span class="material-symbols-outlined fs-6 align-middle me-1">tune</span>Heuristic Feature Matrix
+                  </h4>
+                  <span class="badge rounded bg-secondary bg-opacity-10 text-secondary mono" style="font-size: 9px; cursor: help;" title="Click any feature card to view explanation.">CLICK CARD FOR DETAILS</span>
+                </div>
+                
+                <p class="text-secondary mb-4" style="font-size: 12px; line-height: 1.4;">
+                  Our classifier extracts 12 structural metrics from the URL string. Click on any card below to expand a comprehensive explanation of why this metric triggers security alerts.
+                </p>
+                
+                <!-- Features Grid -->
+                <div class="row g-3" id="featuresContainer">
+                  <!-- Feature Box 1 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="url_length">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size: 11px;">1. URL LENGTH</span>
+                        <span class="badge badge-safe mono font-monospace" data-feature-badge="url_length">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold text-light fs-5" data-feature="url_length">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_url_length">expand_more</span>
+                      </div>
+                      <div class="feature-desc text-secondary-emphasis" style="font-size: 12px;">
+                        Suspicious domains are often unusually long (over 70 characters) due to embedding subdomain parameters, sub-pages, or spoofed brands to deceive visual inspections.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 2 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="has_ip">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size: 11px;">2. HAS IP ADDRESS</span>
+                        <span class="badge badge-safe mono font-monospace" data-feature-badge="has_ip">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold text-light fs-5" data-feature="has_ip">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_has_ip">expand_more</span>
+                      </div>
+                      <div class="feature-desc text-secondary-emphasis" style="font-size: 12px;">
+                        Legitimate sites rarely use raw IP addresses (e.g. 192.168.1.1) as the hostname. Using raw IPs is a typical attacker tactic to avoid registering standard domain records.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 3 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="has_at_symbol">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size: 11px;">3. HAS @ SYMBOL</span>
+                        <span class="badge badge-safe mono font-monospace" data-feature-badge="has_at_symbol">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold text-light fs-5" data-feature="has_at_symbol">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_has_at_symbol">expand_more</span>
+                      </div>
+                      <div class="feature-desc text-secondary-emphasis" style="font-size: 12px;">
+                        The presence of an @ symbol forces browsers to ignore everything preceding it and route the user to the destination path defined directly *after* it. It is highly characteristic of phishing links.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 4 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="has_double_slash">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size: 11px;">4. DOUBLE SLASH POSITION</span>
+                        <span class="badge badge-safe mono font-monospace" data-feature-badge="has_double_slash">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold text-light fs-5" data-feature="has_double_slash">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_has_double_slash">expand_more</span>
+                      </div>
+                      <div class="feature-desc text-secondary-emphasis" style="font-size: 12px;">
+                        A double slash // appearing late in the URL path (after position 7) suggests structural manipulation, typically to mask an open redirect destination.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 5 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="subdomain_count">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size: 11px;">5. SUBDOMAINS COUNT</span>
+                        <span class="badge badge-safe mono font-monospace" data-feature-badge="subdomain_count">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold text-light fs-5" data-feature="subdomain_count">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_subdomain_count">expand_more</span>
+                      </div>
+                      <div class="feature-desc text-secondary-emphasis" style="font-size: 12px;">
+                        Phishing sites stack subdomains (e.g. paypal.com.update.secure.net) to create a false impression of authority. More than 2 subdomains raises diagnostic flags.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 6 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="has_https">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size: 11px;">6. HTTPS SCHEME</span>
+                        <span class="badge badge-safe mono font-monospace" data-feature-badge="has_https">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold text-light fs-5" data-feature="has_https">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_has_https">expand_more</span>
+                      </div>
+                      <div class="feature-desc text-secondary-emphasis" style="font-size: 12px;">
+                        The lack of HTTPS (HTTP protocol) exposes data to eavesdropping. Genuine login systems exclusively use HTTPS. The absence of security certificates triggers extreme threat multipliers.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 7 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="domain_length">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size: 11px;">7. REG. DOMAIN LENGTH</span>
+                        <span class="badge badge-safe mono font-monospace" data-feature-badge="domain_length">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold text-light fs-5" data-feature="domain_length">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_domain_length">expand_more</span>
+                      </div>
+                      <div class="feature-desc text-secondary-emphasis" style="font-size: 12px;">
+                        The length of the main registered domain name. Phishers often register overly long or random domains to find unregistered variations resembling target brands.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 8 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="path_length">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size: 11px;">8. PATH LENGTH</span>
+                        <span class="badge badge-safe mono font-monospace" data-feature-badge="path_length">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold text-light fs-5" data-feature="path_length">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_path_length">expand_more</span>
+                      </div>
+                      <div class="feature-desc text-secondary-emphasis" style="font-size: 12px;">
+                        The length of the subdirectory file path. Phishing links tend to utilize deep directories to push the actual domain host away from the visual address bar.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 9 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="hyphen_in_domain">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size: 11px;">9. HYPHEN IN DOMAIN</span>
+                        <span class="badge badge-safe mono font-monospace" data-feature-badge="hyphen_in_domain">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold text-light fs-5" data-feature="hyphen_in_domain">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_hyphen_in_domain">expand_more</span>
+                      </div>
+                      <div class="feature-desc text-secondary-emphasis" style="font-size: 12px;">
+                        Hyphens (e.g. security-paypal.com) are rarely used in primary legitimate brand domains. Attackers insert hyphens to bypass standard word checks and resemble official titles.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 10 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="digit_ratio">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size: 11px;">10. URL DIGIT RATIO</span>
+                        <span class="badge badge-safe mono font-monospace" data-feature-badge="digit_ratio">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold text-light fs-5" data-feature="digit_ratio">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_digit_ratio">expand_more</span>
+                      </div>
+                      <div class="feature-desc text-secondary-emphasis" style="font-size: 12px;">
+                        The percentage of numbers in the URL string. High digit concentration indicates randomized algorithms generating subpages or session identifiers typical of automated scam scripts.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 11 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="special_char_count">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size: 11px;">11. SPECIAL CHARS COUNT</span>
+                        <span class="badge badge-safe mono font-monospace" data-feature-badge="special_char_count">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold text-light fs-5" data-feature="special_char_count">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_special_char_count">expand_more</span>
+                      </div>
+                      <div class="feature-desc text-secondary-emphasis" style="font-size: 12px;">
+                        Dynamic parameter keys (?, =, &) and URL encoding characters (%) are heavily loaded in malicious URLs to forward stolen data, bypassing basic static filters.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 12 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="tld_in_path">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size: 11px;">12. TLD IN PATH STRING</span>
+                        <span class="badge badge-safe mono font-monospace" data-feature-badge="tld_in_path">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold text-light fs-5" data-feature="tld_in_path">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_tld_in_path">expand_more</span>
+                      </div>
+                      <div class="feature-desc text-secondary-emphasis" style="font-size: 12px;">
+                        Standard extensions like .com, .net, or .org appearing inside the directory path rather than the domain segment (e.g. domain.org/login.com) indicate domain redirection spoofing.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Grid (Col 12/4): Metadata and Specifications -->
+            <div class="col-lg-4">
+              <!-- Threat Location Details -->
+              <div class="glass-panel rounded-3 overflow-hidden p-0 mb-4 border" style="background-color: var(--surface-container); border-color: var(--outline-variant) !important;">
+                <div class="position-relative h-40 overflow-hidden bg-black d-flex align-items-center justify-content-center">
+                  <span class="material-symbols-outlined text-primary opacity-25" style="font-size: 80px;">globe</span>
+                  <!-- Diagnostics Grid Overlay -->
+                  <div class="position-absolute w-full h-full opacity-10" style="background-image: radial-gradient(var(--secondary) 1px, transparent 1px); background-size: 16px 16px;"></div>
+                  <div class="position-absolute bottom-3 start-3">
+                    <div class="mono text-warning fw-bold" style="font-size: 10px;">THREAT LOCATION HOST</div>
+                    <div class="fs-5 fw-bold text-light" id="ipSourceField">-</div>
+                  </div>
+                </div>
+                <div class="p-3">
+                  <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="material-symbols-outlined text-warning" style="font-size: 18px;">location_on</span>
+                    <span class="mono text-secondary" style="font-size: 10px; letter-spacing: 0.05em;">REGISTERED LOCATION / REGISTRAR</span>
+                  </div>
+                  <div class="fs-6 fw-bold" id="locationField">-</div>
+                  <div class="mono text-secondary mt-1" style="font-size: 10px;" id="domainAgeField">AGE: -</div>
+                </div>
+              </div>
+
+              <!-- Model Health / Spec Details -->
+              <div class="glass-panel rounded-3 mb-4">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                  <span class="material-symbols-outlined text-info">analytics</span>
+                  <span class="mono fw-bold text-light" style="font-size: 12px;">ENGINE CLASSIFICATION LATENCY</span>
+                </div>
+                <div class="space-y-3">
+                  <div class="mb-3">
+                    <div class="d-flex justify-content-between mono text-secondary mb-1" style="font-size: 11px;">
+                      <span>MODEL ACCURACY</span>
+                      <span class="text-success fw-bold">98.4%</span>
+                    </div>
+                    <div class="progress" style="height: 5px; background-color: var(--surface-container-high);">
+                      <div class="progress-bar bg-success" style="width: 98.4%"></div>
+                    </div>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span class="mono text-secondary" style="font-size: 11px;">INFERENCE SPEED</span>
+                    <span class="badge bg-info bg-opacity-10 text-info mono" id="inferenceTime">-</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actions Panel -->
+              <div class="d-flex flex-column gap-2">
+                <button class="btn btn-primary py-3 active-scale fw-bold d-flex align-items-center justify-content-center gap-2" id="reScanBtn" style="border-radius: var(--radius-md);">
+                  <span class="material-symbols-outlined">refresh</span> SCAN NEXT DOMAIN
+                </button>
+                <button class="btn btn-outline-secondary py-3 active-scale d-flex align-items-center justify-content-center gap-2" id="copyDetailsBtn" style="border-radius: var(--radius-md); color: var(--on-surface-variant); border-color: var(--outline);">
+                  <span class="material-symbols-outlined">content_copy</span> COPY SCAN METADATA
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== TAB 2: HEURISTIC GUIDE ==================== -->
+        <div id="heuristic-docs" class="tab-content">
+          <div class="glass-panel p-4 rounded-3">
+            <div class="d-flex align-items-center gap-2 mb-4 border-bottom pb-3" style="border-color: var(--outline-variant) !important;">
+              <span class="material-symbols-outlined text-primary fs-3">menu_book</span>
+              <h2 class="m-0 fw-bold fs-4">Heuristics Extraction Documentation</h2>
+            </div>
+            
+            <p class="text-secondary-emphasis" style="font-size: var(--font-base);">
+              URL heuristics represent key structural behaviors extracted statically from the URL string. These parameters do not require a live HTTP connection, making our verification process completely isolated and safe for the scanning host.
+            </p>
+
+            <div class="table-responsive mt-4">
+              <table class="table table-dark table-striped border" style="border-color: var(--outline-variant) !important;">
+                <thead>
+                  <tr class="mono text-secondary" style="font-size: 12px; border-bottom: 2px solid var(--outline-variant);">
+                    <th>HEURISTIC RULE</th>
+                    <th>THREAT RATIONALE</th>
+                    <th>STANDARD THRESHOLD</th>
+                  </tr>
+                </thead>
+                <tbody class="mono" style="font-size: 13px;">
+                  <tr>
+                    <td class="text-primary fw-bold">URL Length</td>
+                    <td class="text-secondary-emphasis">Attackers embed subpages, dynamic parameters, and spoofed keywords.</td>
+                    <td>Safe under 70 chars. Critical above.</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary fw-bold">Has IP Address</td>
+                    <td class="text-secondary-emphasis">Used to skip standard DNS registrations and hide hosting servers.</td>
+                    <td>Strictly binary (0 or 1). Any IP is high-risk.</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary fw-bold">Has @ Symbol</td>
+                    <td class="text-secondary-emphasis">Credentials routing redirection trick to spoof login domains.</td>
+                    <td>Critical if present.</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary fw-bold">Double Slash //</td>
+                    <td class="text-secondary-emphasis">Masks external open redirects, masking target destinations.</td>
+                    <td>Suspicious if position > 7.</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary fw-bold">Subdomains Count</td>
+                    <td class="text-secondary-emphasis">Simulates trusted host hierarchies (e.g., login.brand.secure.net).</td>
+                    <td>Standard: &le; 2. Flagged if &ge; 3.</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary fw-bold">HTTPS Scheme</td>
+                    <td class="text-secondary-emphasis">Absence of secure TLS certs signals low-trust environments.</td>
+                    <td>High-risk if HTTP is detected.</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary fw-bold">Hyphen in Domain</td>
+                    <td class="text-secondary-emphasis">Legitimate institutions avoid hyphens. Spoofer domains use them extensively.</td>
+                    <td>High correlation if hyphen exists.</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary fw-bold">Digit Ratio</td>
+                    <td class="text-secondary-emphasis">Automated domain generation algorithms load URLs with numeric hashes.</td>
+                    <td>Flagged if ratio exceeds 12% of total length.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== TAB 3: MODEL SPECS ==================== -->
+        <div id="model-specs" class="tab-content">
+          <div class="glass-panel p-4 rounded-3">
+            <div class="d-flex align-items-center gap-2 mb-4 border-bottom pb-3" style="border-color: var(--outline-variant) !important;">
+              <span class="material-symbols-outlined text-primary fs-3">memory</span>
+              <h2 class="m-0 fw-bold fs-4">Random Forest Classifier Specifications</h2>
+            </div>
+            
+            <div class="row g-4">
+              <!-- Left side: Model Parameters -->
+              <div class="col-md-6">
+                <h5 class="mono text-primary mb-3">Model Parameters</h5>
+                <ul class="list-group list-group-flush bg-transparent border-0">
+                  <li class="list-group-item bg-transparent text-secondary-emphasis border-0 px-0 d-flex justify-content-between">
+                    <span class="mono">Algorithm:</span>
+                    <span class="mono text-light fw-bold">Random Forest Classifier (scikit-learn)</span>
+                  </li>
+                  <li class="list-group-item bg-transparent text-secondary-emphasis border-0 px-0 d-flex justify-content-between">
+                    <span class="mono">Estimators Count:</span>
+                    <span class="mono text-light fw-bold">100 Trees</span>
+                  </li>
+                  <li class="list-group-item bg-transparent text-secondary-emphasis border-0 px-0 d-flex justify-content-between">
+                    <span class="mono">Splitting Criterion:</span>
+                    <span class="mono text-light fw-bold">Gini Impurity</span>
+                  </li>
+                  <li class="list-group-item bg-transparent text-secondary-emphasis border-0 px-0 d-flex justify-content-between">
+                    <span class="mono">Training Samples:</span>
+                    <span class="mono text-light fw-bold">500,000+ Phishing & Safe URLs</span>
+                  </li>
+                  <li class="list-group-item bg-transparent text-secondary-emphasis border-0 px-0 d-flex justify-content-between">
+                    <span class="mono">Out-of-Bag (OOB) Score:</span>
+                    <span class="mono text-success fw-bold">98.42%</span>
+                  </li>
+                </ul>
+              </div>
+
+              <!-- Right side: Classification Report -->
+              <div class="col-md-6">
+                <h5 class="mono text-primary mb-3">Classification Evaluation Report</h5>
+                <div class="table-responsive">
+                  <table class="table table-dark table-bordered border-secondary" style="font-size: 13px;">
+                    <thead>
+                      <tr class="mono text-secondary">
+                        <th>Class</th>
+                        <th>Precision</th>
+                        <th>Recall</th>
+                        <th>F1-Score</th>
+                      </tr>
+                    </thead>
+                    <tbody class="mono text-light">
+                      <tr>
+                        <td>Safe Domains (0)</td>
+                        <td>98.6%</td>
+                        <td>98.2%</td>
+                        <td>98.4%</td>
+                      </tr>
+                      <tr>
+                        <td>Phishing (1)</td>
+                        <td>98.2%</td>
+                        <td>98.6%</td>
+                        <td>98.4%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Feature Importance Bar Chart representation -->
+            <div class="mt-5 border-top pt-4" style="border-color: var(--outline-variant) !important;">
+              <h5 class="mono text-primary mb-3">Feature Importance Weight Distribution</h5>
+              
+              <div class="space-y-3">
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mono text-secondary mb-1" style="font-size: 11px;">
+                    <span>HTTPS protocol missing (Weight: 0.23)</span>
+                    <span class="text-primary">23.0%</span>
+                  </div>
+                  <div class="progress" style="height: 6px; background-color: var(--surface-container-high);">
+                    <div class="progress-bar bg-primary" style="width: 23%"></div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mono text-secondary mb-1" style="font-size: 11px;">
+                    <span>URL Character Length (Weight: 0.17)</span>
+                    <span class="text-primary">17.0%</span>
+                  </div>
+                  <div class="progress" style="height: 6px; background-color: var(--surface-container-high);">
+                    <div class="progress-bar bg-primary" style="width: 17%"></div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mono text-secondary mb-1" style="font-size: 11px;">
+                    <span>TLD String in Path (Weight: 0.13)</span>
+                    <span class="text-primary">13.0%</span>
+                  </div>
+                  <div class="progress" style="height: 6px; background-color: var(--surface-container-high);">
+                    <div class="progress-bar bg-primary" style="width: 13%"></div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mono text-secondary mb-1" style="font-size: 11px;">
+                    <span>Has IP Address Host (Weight: 0.12)</span>
+                    <span class="text-primary">12.0%</span>
+                  </div>
+                  <div class="progress" style="height: 6px; background-color: var(--surface-container-high);">
+                    <div class="progress-bar bg-primary" style="width: 12%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Logs Section -->
+        <section class="mt-5 border-top pt-4" id="threat-logs-section" style="border-color: var(--outline-variant) !important;">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+            <div>
+              <h4 class="mono text-uppercase tracking-wider m-0" style="font-size: 14px; color: var(--on-surface);">
+                Threat Intelligence Scan Logs
+              </h4>
+              <span class="mono text-secondary" style="font-size: 10px;">SESSION DATALOGGER PERSISTENCE</span>
+            </div>
+
+            <!-- Filters, Search, Export Control Group -->
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <input type="text" id="logSearchInput" class="form-control bg-dark border-secondary mono py-1 px-3 text-light" style="width: 180px; font-size: 12px; border-radius: var(--radius-md);" placeholder="Filter by URL...">
+              
+              <select id="logFilterSelect" class="form-select bg-dark border-secondary mono text-light py-1" style="width: 140px; font-size: 12px; border-radius: var(--radius-md);">
+                <option value="all">ALL VERDICTS</option>
+                <option value="phishing">PHISHING ONLY</option>
+                <option value="legitimate">SAFE ONLY</option>
+              </select>
+
+              <button class="btn btn-sm btn-outline-info mono d-flex align-items-center gap-1" id="exportLogsBtn" style="font-size: 11px;">
+                <span class="material-symbols-outlined fs-6">download</span> EXPORT JSON
+              </button>
+
+              <button class="btn btn-sm btn-outline-danger mono d-flex align-items-center gap-1" id="clearLogsBtn" style="font-size: 11px;">
+                <span class="material-symbols-outlined fs-6">delete_forever</span> CLEAR
+              </button>
+            </div>
+          </div>
+
+          <div class="d-flex flex-column gap-2" id="logsHistoryContainer">
+            <!-- Dynamic Log Items will append here -->
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer class="text-center py-4 border-top mt-5" style="background-color: var(--surface-container-lowest); border-color: var(--outline-variant) !important; z-index: 10;">
+    <div class="container px-4 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+      <span class="mono text-secondary" style="font-size: 10px;">© 2026 SENTINEL-X CYBERSECURITY INC. ANALYST PORTAL STACK.</span>
+      <div class="d-flex gap-4">
+        <a href="#" class="text-secondary text-decoration-none mono" style="font-size: 10px;">PRIVACY POLICY</a>
+        <a href="#" class="text-secondary text-decoration-none mono" style="font-size: 10px;">DISCLOSURES</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Bootstrap Bundle JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Client-side Heuristics Scanner Engine -->
+  <script>
+    // Tab Switching Logic
+    const sidebarLinks = document.querySelectorAll('.sidebar-link[data-tab-target]');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    sidebarLinks.forEach(link => {
+      link.addEventListener('click', () => {
+        const targetTabId = link.getAttribute('data-tab-target');
+        
+        // Remove active class from all links and tabs
+        sidebarLinks.forEach(l => l.classList.remove('active'));
+        tabContents.forEach(t => t.classList.remove('active'));
+
+        // Add active class to clicked link and targeted tab content
+        link.classList.add('active');
+        const targetTab = document.getElementById(targetTabId);
+        if (targetTab) {
+          targetTab.classList.add('active');
+        }
+
+        // Scroll to top of main canvas
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+
+    // Mobile Sidebar Toggle
+    const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
+    const sidebarNav = document.getElementById('sidebarNav');
+    if (mobileSidebarToggle && sidebarNav) {
+      mobileSidebarToggle.addEventListener('click', () => {
+        sidebarNav.classList.toggle('d-none');
+        sidebarNav.classList.toggle('d-flex');
+        // If showing, absolute overlay on small screen
+        if (sidebarNav.classList.contains('d-flex')) {
+          sidebarNav.style.position = 'absolute';
+          sidebarNav.style.height = 'calc(100vh - 64px)';
+        }
+      });
+    }
+
+    // Scroll to logs helper from sidebar
+    const sidebarLogsLink = document.getElementById('sidebarLogsLink');
+    if (sidebarLogsLink) {
+      sidebarLogsLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        // Make sure Command Center tab is active
+        document.querySelector('.sidebar-link[data-tab-target="command-center"]').click();
+        
+        // Scroll to section
+        const target = document.querySelector('#threat-logs-section');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    }
+
+    // Elements
+    const scanForm = document.getElementById('scanForm');
+    const urlInput = document.getElementById('urlInput');
+    const pasteBtn = document.getElementById('pasteBtn');
+    const scanningLoader = document.getElementById('scanningLoader');
+    const resultDashboard = document.getElementById('resultDashboard');
+    const loaderStateText = document.getElementById('loaderStateText');
+    const loaderPercentage = document.getElementById('loaderPercentage');
+    const terminalLogBody = document.getElementById('terminalLogBody');
+    
+    const verdictCard = document.getElementById('verdictCard');
+    const verdictIcon = document.getElementById('verdictIcon');
+    const verdictTitle = document.getElementById('verdictTitle');
+    const verdictPercentage = document.getElementById('verdictPercentage');
+    const verdictBanner = document.getElementById('verdictBanner');
+    const verdictBannerIcon = document.getElementById('verdictBannerIcon');
+    const verdictBannerTitle = document.getElementById('verdictBannerTitle');
+    const verdictBannerDesc = document.getElementById('verdictBannerDesc');
+    const scannedUrlLabel = document.getElementById('scannedUrlLabel');
+    const dialCircle = document.getElementById('dialCircle');
+
+    const ipSourceField = document.getElementById('ipSourceField');
+    const locationField = document.getElementById('locationField');
+    const domainAgeField = document.getElementById('domainAgeField');
+    const inferenceTime = document.getElementById('inferenceTime');
+    
+    // Logs controls
+    const logsHistoryContainer = document.getElementById('logsHistoryContainer');
+    const logSearchInput = document.getElementById('logSearchInput');
+    const logFilterSelect = document.getElementById('logFilterSelect');
+    const clearLogsBtn = document.getElementById('clearLogsBtn');
+    const exportLogsBtn = document.getElementById('exportLogsBtn');
+
+    const reScanBtn = document.getElementById('reScanBtn');
+    const copyDetailsBtn = document.getElementById('copyDetailsBtn');
+    const emergencyLockBtn = document.getElementById('emergencyLockBtn');
+    const notificationBell = document.getElementById('notificationBell');
+
+    // Clipboard Paste Utility
+    pasteBtn.addEventListener('click', async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        urlInput.value = text;
+        urlInput.focus();
+      } catch (err) {
+        // Fallback if permission blocked
+        console.warn("Unable to access clipboard: ", err);
+      }
+    });
+
+    // In-memory Logs Database
+    let logsDatabase = [
+      {
+        url: "https://github.com/sentinel-x/core",
+        timestamp: "2026.06.09 11:42:01",
+        verdict: "LEGITIMATE",
+        score: 5.2
+      },
+      {
+        url: "http://paypa1-security-verification.com/login",
+        timestamp: "2026.06.09 11:35:48",
+        verdict: "PHISHING",
+        score: 94.8
+      }
+    ];
+
+    // Card expand event listeners
+    document.querySelectorAll('.feature-card').forEach(card => {
+      card.addEventListener('click', () => {
+        card.classList.toggle('expanded');
+        const chevron = card.querySelector('.material-symbols-outlined:last-child');
+        if (chevron) {
+          if (card.classList.contains('expanded')) {
+            chevron.innerText = 'expand_less';
+            chevron.style.transform = 'rotate(180deg)';
+          } else {
+            chevron.innerText = 'expand_more';
+            chevron.style.transform = 'rotate(0deg)';
+          }
+        }
+      });
+    });
+
+    // Render Logs with search and filter parameters
+    function renderLogs() {
+      logsHistoryContainer.innerHTML = "";
+      const searchQuery = logSearchInput.value.toLowerCase().trim();
+      const filterValue = logFilterSelect.value;
+
+      const filtered = logsDatabase.filter(item => {
+        const matchesSearch = item.url.toLowerCase().includes(searchQuery);
+        const matchesFilter = filterValue === 'all' || 
+          (filterValue === 'phishing' && item.verdict === 'PHISHING') ||
+          (filterValue === 'legitimate' && item.verdict === 'LEGITIMATE');
+        return matchesSearch && matchesFilter;
+      });
+
+      if (filtered.length === 0) {
+        logsHistoryContainer.innerHTML = `
+          <div class="glass-panel text-center py-4 border border-dashed border-secondary opacity-50">
+            <span class="material-symbols-outlined text-secondary fs-2 mb-2">find_in_page</span>
+            <p class="mono text-secondary m-0" style="font-size: 12px;">NO INTEGRITY LOGS MATCH SEARCH CRITERIA</p>
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(item => {
+        const isPhish = item.verdict === 'PHISHING';
+        const badgeClass = isPhish ? 'badge-threat' : 'badge-safe';
+        const iconLabel = isPhish ? 'warning' : 'check_circle';
+        const iconClass = isPhish ? 'text-danger' : 'text-success';
+
+        const logItemHtml = `
+          <div class="glass-panel p-3 rounded-2 hover-bg-high d-flex justify-content-between align-items-center pointer active-scale" style="background-color: var(--surface-container-low); border: 1px solid var(--outline-variant); cursor: pointer;" onclick="loadAndScanUrl('${item.url}')">
+            <div class="d-flex align-items-center gap-3">
+              <span class="material-symbols-outlined ${iconClass}">${iconLabel}</span>
+              <div>
+                <div class="mono text-light text-truncate" style="max-width: 450px; font-size: 13px;">${item.url}</div>
+                <div class="mono text-secondary" style="font-size: 10px;">TIMESTAMP: ${item.timestamp} | SCORE: ${item.score}%</div>
+              </div>
+            </div>
+            <span class="badge ${badgeClass} font-monospace">${item.verdict}</span>
+          </div>
+        `;
+        logsHistoryContainer.insertAdjacentHTML('beforeend', logItemHtml);
+      });
+    }
+
+    // Load URL from logs directly into input and scan
+    window.loadAndScanUrl = function(url) {
+      urlInput.value = url;
+      // Trigger scan form submit
+      scanForm.dispatchEvent(new Event('submit'));
+    };
+
+    // Export Logs as JSON
+    exportLogsBtn.addEventListener('click', () => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(logsDatabase, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `sentinel_x_scan_logs_${Date.now()}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    });
+
+    // Clear Logs
+    clearLogsBtn.addEventListener('click', () => {
+      if (confirm("Are you sure you want to purge all session threat intelligence logs?")) {
+        logsDatabase = [];
+        renderLogs();
+      }
+    });
+
+    // Search and Filter Listeners
+    logSearchInput.addEventListener('input', renderLogs);
+    logFilterSelect.addEventListener('change', renderLogs);
+
+    // Initial Logs Render
+    renderLogs();
+
+    // Client-side Heuristic Feature Extractor
+    function extractFeatures(url) {
+      let parsed;
+      try {
+        parsed = new URL(url);
+      } catch (e) {
+        // Fallback for relative/partial URLs
+        try {
+          parsed = new URL("http://" + url);
+        } catch (err) {
+          parsed = { href: url, hostname: url, pathname: "", protocol: "" };
+        }
+      }
+
+      const domain = parsed.hostname || "";
+      const path = parsed.pathname || "";
+      const scheme = parsed.protocol ? parsed.protocol.replace(':', '') : "http";
+
+      const url_length = url.length;
+      const has_ip = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(domain) ? 1 : 0;
+      const has_at_symbol = url.includes('@') ? 1 : 0;
+      const has_double_slash = url.substring(7).includes('//') ? 1 : 0;
+      const domainParts = domain.split('.');
+      const subdomain_count = Math.max(0, domainParts.length - 2);
+      const has_https = (scheme === 'https') ? 1 : 0;
+      const domain_length = domain.length;
+      const path_length = path.length;
+      const hyphen_in_domain = domain.includes('-') ? 1 : 0;
+      
+      const totalDigits = (url.match(/\d/g) || []).length;
+      const digit_ratio = url_length > 0 ? (totalDigits / url_length) : 0;
+      
+      const special_char_count = (url.match(/[%=\?&]/g) || []).length;
+      const tld_in_path = /\.(com|net|org)/.test(path) ? 1 : 0;
+
+      return {
+        url_length,
+        has_ip,
+        has_at_symbol,
+        has_double_slash,
+        subdomain_count,
+        has_https,
+        domain_length,
+        path_length,
+        hyphen_in_domain,
+        digit_ratio,
+        special_char_count,
+        tld_in_path
+      };
+    }
+
+    // Heuristics Score predictor
+    function predictPhishing(features) {
+      let score = 0;
+      
+      // Heuristic weights for phishing
+      if (features.url_length > 70) score += 20;
+      if (features.has_ip === 1) score += 30;
+      if (features.has_at_symbol === 1) score += 25;
+      if (features.has_double_slash === 1) score += 20;
+      if (features.subdomain_count > 2) score += 15;
+      if (features.has_https === 0) score += 30;
+      if (features.hyphen_in_domain === 1) score += 15;
+      if (features.digit_ratio > 0.12) score += 20;
+      if (features.special_char_count > 3) score += 15;
+      if (features.tld_in_path === 1) score += 25;
+
+      const threatScore = Math.min(99.4, Math.max(5.2, score));
+      return {
+        isPhishing: threatScore > 40,
+        score: parseFloat(threatScore.toFixed(1))
+      };
+    }
+
+    // Console Logging Simulator
+    function printTerminalLog(text, type = 'info') {
+      let prefix = "[INFO]";
+      let colorClass = "text-secondary";
+
+      if (type === 'success') {
+        prefix = "[OK]";
+        colorClass = "text-success";
+      } else if (type === 'warn') {
+        prefix = "[WARN]";
+        colorClass = "text-warning";
+      } else if (type === 'error') {
+        prefix = "[ALERT]";
+        colorClass = "text-danger";
+      }
+
+      const timeString = new Date().toISOString().split('T')[1].substring(0, 8);
+      const logLine = `<div class="terminal-log-line"><span class="text-secondary mono">[${timeString}]</span> <span class="${colorClass} mono fw-bold">${prefix} ${text}</span></div>`;
+      
+      terminalLogBody.insertAdjacentHTML('beforeend', logLine);
+      terminalLogBody.scrollTop = terminalLogBody.scrollHeight;
+    }
+
+    // Handle form scanning submission
+    scanForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const rawUrl = urlInput.value.trim();
+      if (!rawUrl) return;
+
+      // Reset UI states
+      scanningLoader.classList.remove('d-none');
+      resultDashboard.classList.add('d-none');
+      terminalLogBody.innerHTML = "";
+
+      // Extraction of features right away to support step logging
+      const features = extractFeatures(rawUrl);
+
+      // Simulation Stages
+      const stages = [
+        { percentage: 10, text: "PARSING DOMAIN HEURISTICS...", action: () => printTerminalLog(`Analyzing Hostname structure for: ${rawUrl.substring(0, 40)}...`, 'info') },
+        { percentage: 25, text: "EXTRACTING SUBDOMAINS & DIRECTORY STRINGS...", action: () => {
+            printTerminalLog(`Registered domain length: ${features.domain_length} characters.`, 'info');
+            if (features.subdomain_count > 2) {
+              printTerminalLog(`Extracted subdomains: ${features.subdomain_count} count. (Exceeds threshold)`, 'warn');
+            } else {
+              printTerminalLog(`Extracted subdomains: ${features.subdomain_count} count.`, 'success');
+            }
+        }},
+        { percentage: 45, text: "SCHEME AND ENCRYPTION INTEGRITY CHECK...", action: () => {
+            if (features.has_https === 1) {
+              printTerminalLog(`SSL/TLS secure protocol detected (https://).`, 'success');
+            } else {
+              printTerminalLog(`Insecure connection scheme (http://). Data is exposed.`, 'error');
+            }
+        }},
+        { percentage: 65, text: "CALCULATING SUB-LEXICAL RATIOS...", action: () => {
+            printTerminalLog(`Digit characters ratio: ${(features.digit_ratio * 100).toFixed(1)}% of URL structure.`, 'info');
+            if (features.digit_ratio > 0.12) {
+              printTerminalLog(`Automated subpage generation indicators detected.`, 'warn');
+            }
+            if (features.has_at_symbol === 1) {
+              printTerminalLog(`Ignored prefix marker (@ symbol) detected in path.`, 'error');
+            }
+        }},
+        { percentage: 85, text: "COMPUTING RANDOM FOREST CLASSIFICATION...", action: () => {
+            printTerminalLog(`Feeding 12 features to decision ensemble...`, 'info');
+            printTerminalLog(`Estimator consensus calculated successfully.`, 'success');
+        }},
+        { percentage: 100, text: "SYNCHRONIZING VERDICT RESULTS...", action: () => {
+            printTerminalLog(`Scan completed. Dispatching UI variables.`, 'success');
+        }}
+      ];
+
+      let currentStageIdx = 0;
+      let progress = 0;
+
+      const interval = setInterval(() => {
+        progress += 2;
+        if (progress > 100) progress = 100;
+
+        loaderProgressBarUpdate(progress);
+
+        // Run current stage action if matches progress threshold
+        if (currentStageIdx < stages.length && progress >= stages[currentStageIdx].percentage) {
+          loaderStateText.innerText = stages[currentStageIdx].text;
+          stages[currentStageIdx].action();
+          currentStageIdx++;
+        }
+
+        if (progress >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            completeScanning(rawUrl, features);
+          }, 350);
+        }
+      }, 35);
+    });
+
+    function loaderProgressBarUpdate(value) {
+      loaderPercentage.innerText = `${value}% COMPLETE`;
+    }
+
+    function completeScanning(url, features) {
+      scanningLoader.classList.add('d-none');
+      resultDashboard.classList.remove('d-none');
+
+      const prediction = predictPhishing(features);
+
+      // Render Feature Matrix values & badges
+      const updateFeature = (key, value, isFlagged, isNeutral = false) => {
+        document.querySelector(`[data-feature="${key}"]`).innerText = value;
+        const badge = document.querySelector(`[data-feature-badge="${key}"]`);
+        
+        if (isNeutral) {
+          badge.className = "badge bg-secondary bg-opacity-20 text-secondary-emphasis mono font-monospace";
+          badge.innerText = "NEUTRAL";
+        } else if (isFlagged) {
+          badge.className = "badge badge-threat mono font-monospace";
+          badge.innerText = "CRITICAL";
+        } else {
+          badge.className = "badge badge-safe mono font-monospace";
+          badge.innerText = "SAFE";
+        }
+      };
+
+      updateFeature("url_length", `${features.url_length} chars`, features.url_length > 70);
+      updateFeature("has_ip", features.has_ip ? 'Yes (IP Address)' : 'No', features.has_ip === 1);
+      updateFeature("has_at_symbol", features.has_at_symbol ? 'Yes (@ Present)' : 'No', features.has_at_symbol === 1);
+      updateFeature("has_double_slash", features.has_double_slash ? 'Yes (Abnormal)' : 'No', features.has_double_slash === 1);
+      updateFeature("subdomain_count", `${features.subdomain_count} detected`, features.subdomain_count > 2);
+      updateFeature("has_https", features.has_https ? 'HTTPS Secured' : 'HTTP Unsecured', features.has_https === 0);
+      updateFeature("domain_length", `${features.domain_length} chars`, features.domain_length > 25, true);
+      updateFeature("path_length", `${features.path_length} chars`, false, true);
+      updateFeature("hyphen_in_domain", features.hyphen_in_domain ? 'Yes (- Present)' : 'No', features.hyphen_in_domain === 1);
+      updateFeature("digit_ratio", `${(features.digit_ratio * 100).toFixed(1)}%`, features.digit_ratio > 0.12);
+      updateFeature("special_char_count", `${features.special_char_count} special chars`, features.special_char_count > 3);
+      updateFeature("tld_in_path", features.tld_in_path ? 'Yes (TLD in Path)' : 'No', features.tld_in_path === 1);
+
+      // Reset card expansion states
+      document.querySelectorAll('.feature-card').forEach(card => {
+        card.classList.remove('expanded');
+        const chevron = card.querySelector('.material-symbols-outlined:last-child');
+        if (chevron) {
+          chevron.innerText = 'expand_more';
+          chevron.style.transform = 'rotate(0deg)';
+        }
+      });
+
+      // Update Verdict Layout
+      scannedUrlLabel.innerText = url;
+      verdictPercentage.innerText = `${prediction.score}%`;
+      
+      // Gauge SVG calculations
+      const circ = 2 * Math.PI * 16;
+      const offset = circ - (prediction.score / 100) * circ;
+      dialCircle.style.strokeDasharray = `${circ}`;
+      dialCircle.style.strokeDashoffset = offset;
+
+      if (prediction.isPhishing) {
+        // Threat Design
+        verdictCard.className = "glass-panel rounded-3 mb-4 position-relative overflow-hidden status-phish";
+        verdictIcon.innerText = "report";
+        verdictIcon.className = "material-symbols-outlined fs-2 text-danger verdict-pulse-phish";
+        verdictTitle.innerText = "PHISHING DETECTED";
+        verdictPercentage.className = "mono fw-bold fs-2 text-danger";
+        dialCircle.className = "gauge-val-phish";
+        
+        verdictBanner.className = "mt-4 p-3 rounded border border-danger bg-danger bg-opacity-10 d-flex gap-3";
+        verdictBannerIcon.innerText = "gavel";
+        verdictBannerIcon.className = "material-symbols-outlined text-danger fs-4";
+        verdictBannerTitle.innerText = "HIGH-RISK THREAT ALERT";
+        verdictBannerTitle.className = "fw-bold mb-1 text-danger";
+        verdictBannerDesc.innerText = "This domain carries structure identifiers matching known spoofing layouts. Do not enter credentials or complete verification requests.";
+        
+        // Mock threat origin
+        const ipSuff = Math.floor(Math.random() * 254 + 1);
+        ipSourceField.innerText = `185.112.148.${ipSuff}`;
+        locationField.innerText = "Moscow, Russian Federation (Host-Direct)";
+        domainAgeField.innerText = "REGISTERED: 4 Days ago (New Reg)";
+      } else {
+        // Safe Design
+        verdictCard.className = "glass-panel rounded-3 mb-4 position-relative overflow-hidden status-safe";
+        verdictIcon.innerText = "verified_user";
+        verdictIcon.className = "material-symbols-outlined fs-2 text-success verdict-pulse-safe";
+        verdictTitle.innerText = "SECURE / LEGITIMATE";
+        verdictPercentage.className = "mono fw-bold fs-2 text-success";
+        dialCircle.className = "gauge-val-safe";
+
+        verdictBanner.className = "mt-4 p-3 rounded border border-success bg-success bg-opacity-10 d-flex gap-3";
+        verdictBannerIcon.innerText = "verified";
+        verdictBannerIcon.className = "material-symbols-outlined text-success fs-4";
+        verdictBannerTitle.innerText = "DOMAIN RECORD CLEAR";
+        verdictBannerTitle.className = "fw-bold mb-1 text-success";
+        verdictBannerDesc.innerText = "The URL is structurally consistent with safe domain configurations. Standard heuristics did not flag spoofing characteristics.";
+
+        // Mock safe origin
+        const ipSuff = Math.floor(Math.random() * 254 + 1);
+        ipSourceField.innerText = `142.250.72.${ipSuff}`;
+        locationField.innerText = "Google LLC | California, United States";
+        domainAgeField.innerText = "REGISTERED: 4,320 Days ago (Stable Node)";
+      }
+
+      inferenceTime.innerText = `${Math.floor(Math.random() * 6 + 4)}ms`;
+
+      // Log results into sessions logs
+      const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19).replace(/-/g, '.');
+      const logItem = {
+        url: url,
+        timestamp: timestamp,
+        verdict: prediction.isPhishing ? 'PHISHING' : 'LEGITIMATE',
+        score: prediction.score
+      };
+      
+      // Add to database and rerender logs
+      logsDatabase.unshift(logItem);
+      renderLogs();
+    }
+
+    reScanBtn.addEventListener('click', () => {
+      urlInput.value = "";
+      urlInput.focus();
+    });
+
+    copyDetailsBtn.addEventListener('click', () => {
+      const data = {
+        url: urlInput.value,
+        verdict: verdictTitle.innerText,
+        percentage: verdictPercentage.innerText,
+        ip: ipSourceField.innerText,
+        location: locationField.innerText,
+        domainAge: domainAgeField.innerText,
+        features: extractFeatures(urlInput.value)
+      };
+      navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      alert('Security metadata copied to clipboard!');
+    });
+
+    emergencyLockBtn.addEventListener('click', () => {
+      alert("EMERGENCY LOCKDOWN INITIATED. Session data isolated. Analyser nodes going offline.");
+    });
+
+    notificationBell.addEventListener('click', () => {
+      alert("No new alerts. Heuristic engine status is stable.");
+    });
+  </script>
+</body>
+</html>

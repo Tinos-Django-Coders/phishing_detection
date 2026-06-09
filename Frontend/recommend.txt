@@ -1,0 +1,324 @@
+========================================================================
+             SENTINEL-X PHISHING DETECTION INTEGRATION GUIDE
+========================================================================
+This document details recommendations and exact instructions for Django backend 
+developers to wire up the Sentinel-X frontend dashboard (index.html) with 
+the Python machine learning classifier framework.
+
+------------------------------------------------------------------------
+1. PROJECT STRUCTURE RECOMMENDATION
+------------------------------------------------------------------------
+We recommend placing files within the Django project as follows:
+
+phishing_detector/
+├── manage.py
+├── phishing_detector/
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── detector/
+│   ├── views.py              <-- Controller handling scanning and JSON endpoints
+│   ├── urls.py               <-- Router for scan paths
+│   ├── forms.py              <-- URLInputForm definitions
+│   ├── feature_extractor.py  <-- Heuristic extractor logic
+│   ├── model/
+│   │   └── phishing_model.pkl <-- Trained Random Forest classifier binary
+│   └── templates/
+│       └── detector/
+│           └── index.html    <-- Copy and paste Frontend/index.html here
+│   └── static/
+│       └── detector/
+│           └── custom.css    <-- Copy and paste Frontend/custom.css here
+└── recommend.txt             <-- This guide
+
+------------------------------------------------------------------------
+2. DJANGO TEMPLATE & STATIC ASSETS SETUP
+------------------------------------------------------------------------
+In your `detector/templates/detector/index.html` file, update the header links
+to point to Django's static files manager:
+
+```html
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  ...
+  <!-- Custom design system rules -->
+  <link rel="stylesheet" href="{% static 'detector/custom.css' %}">
+</head>
+```
+
+Make sure your Django settings.py has static directory handling configured:
+```python
+STATIC_URL = 'static/'
+```
+
+------------------------------------------------------------------------
+3. PYTHON FEATURE EXTRACTOR (detector/feature_extractor.py)
+------------------------------------------------------------------------
+Implement the following heuristic parser. It parses the URL purely from 
+the string input without triggering slow external WHOIS or DNS lookups:
+
+```python
+import re
+from urllib.parse import urlparse
+import tldextract
+
+def extract_features(url: str) -> list:
+    """
+    Extracts 12 critical features from the URL string.
+    Matches the index.html frontend heuristic layout.
+    """
+    parsed = urlparse(url)
+    ext = tldextract.extract(url)
+
+    # 1. total character length
+    url_length = len(url)
+    
+    # 2. uses IP address instead of domain name
+    has_ip = 1 if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', parsed.netloc) else 0
+    
+    # 3. '@' symbol in URL
+    has_at_symbol = 1 if '@' in url else 0
+    
+    # 4. '//' position after protocol definition
+    has_double_slash = 1 if '//' in url[7:] else 0
+    
+    # 5. subdomain count
+    subdomain_count = len(ext.subdomain.split('.')) if ext.subdomain else 0
+    
+    # 6. scheme is HTTPS
+    has_https = 1 if parsed.scheme == 'https' else 0
+    
+    # 7. domain string length
+    domain_length = len(ext.domain)
+    
+    # 8. path string length
+    path_length = len(parsed.path)
+    
+    # 9. hyphen '-' in domain
+    hyphen_in_domain = 1 if '-' in ext.domain else 0
+    
+    # 10. ratio of digits to URL length
+    digit_ratio = sum(c.isdigit() for c in url) / url_length if url_length > 0 else 0
+    
+    # 11. special char frequency (%, =, ?, &)
+    special_char_count = sum(url.count(c) for c in ['%', '=', '?', '&'])
+    
+    # 12. standard TLD extensions inside the path string
+    tld_in_path = 1 if any(t in parsed.path for t in ['.com', '.net', '.org']) else 0
+
+    features = [
+        url_length,
+        has_ip,
+        has_at_symbol,
+        has_double_slash,
+        subdomain_count,
+        has_https,
+        domain_length,
+        path_length,
+        hyphen_in_domain,
+        digit_ratio,
+        special_char_count,
+        tld_in_path
+    ]
+    return features
+```
+
+------------------------------------------------------------------------
+4. MACHINE LEARNING TRAINING & PICKLING SCRIPT
+------------------------------------------------------------------------
+Run the following offline script to build `phishing_model.pkl`:
+
+```python
+# train_model.py
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+import joblib
+from detector.feature_extractor import extract_features
+
+# 1. Load your phishing dataset (e.g. from Kaggle)
+# Expected schema: columns=['url', 'label'] where 0=Legitimate, 1=Phishing
+df = pd.read_csv('phishing_dataset.csv')
+
+# 2. Extract features offline
+X = [extract_features(url) for url in df['url']]
+y = df['label'].tolist()
+
+# 3. Split & train Random Forest ensemble
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+clf = RandomForestClassifier(n_estimators=100, random_state=42)
+clf.fit(X_train, y_train)
+
+# 4. Export model binary
+joblib.dump(clf, 'detector/model/phishing_model.pkl')
+print("Model trained and exported successfully!")
+```
+
+------------------------------------------------------------------------
+5. DJANGO VIEWS & ROUTING CONFIGURATION (detector/views.py)
+------------------------------------------------------------------------
+Load the model into memory at Django initialization to guarantee high 
+concurrency performance. Implement a scan view endpoint returning JSON data:
+
+```python
+import os
+import joblib
+from django.shortcuts import render
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .feature_extractor import extract_features
+
+# Preload classifier binary
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'model', 'phishing_model.pkl')
+try:
+    classifier = joblib.load(MODEL_PATH)
+except FileNotFoundError:
+    classifier = None  # Setup fallback logic or train prompt
+
+def dashboard(request):
+    """Renders the dashboard portal"""
+    return render(request, 'detector/index.html')
+
+@csrf_exempt
+def scan_url_api(request):
+    """
+    POST Endpoint. Receives raw URL string, extracts features, 
+    calculates predictions, and returns JSON payload.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST request required'}, status=400)
+    
+    url = request.POST.get('url', '').strip()
+    if not url:
+        return JsonResponse({'error': 'URL input is empty'}, status=400)
+
+    # 1. Extract heuristics
+    features = extract_features(url)
+    
+    # 2. Compute ML Inference
+    if classifier:
+        # Predict class (0 or 1) and probabilities
+        prediction = classifier.predict([features])[0]
+        prob = classifier.predict_proba([features])[0][1] # Probability of phishing
+        verdict = 'PHISHING' if prediction == 1 else 'LEGITIMATE'
+        confidence = round(prob * 100, 1)
+    else:
+        # Fallback heuristic ruleset if ML binary not available yet
+        score = 0
+        if len(url) > 70: score += 20
+        if '@' in url: score += 25
+        if not url.startswith('https'): score += 30
+        verdict = 'PHISHING' if score > 40 else 'LEGITIMATE'
+        confidence = float(min(99.4, max(5.2, score)))
+
+    return JsonResponse({
+        'url': url,
+        'verdict': verdict,
+        'confidence': confidence,
+        'features': {
+            'url_length': features[0],
+            'has_ip': bool(features[1]),
+            'has_at_symbol': bool(features[2]),
+            'has_double_slash': bool(features[3]),
+            'subdomain_count': features[4],
+            'has_https': bool(features[5]),
+            'domain_length': features[6],
+            'path_length': features[7],
+            'hyphen_in_domain': bool(features[8]),
+            'digit_ratio': round(features[9], 4),
+            'special_char_count': features[10],
+            'tld_in_path': bool(features[11])
+        }
+    })
+```
+
+Map views using paths inside `detector/urls.py`:
+```python
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('', views.dashboard, name='dashboard'),
+    path('api/scan/', views.scan_url_api, name='scan_api'),
+]
+```
+
+------------------------------------------------------------------------
+6. HOOKING UP THE REAL API CALL IN HTML FRONTEND
+------------------------------------------------------------------------
+In the `<script>` section of `index.html`, developers can replace the mock 
+progress interval handler with a real API call. Locate the `completeScanning`
+trigger in the form submit event handler, and replace it with:
+
+```javascript
+// Function helper to get CSRF tokens (Standard Django cookie query)
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// In index.html, replace the setInterval logic in the scanForm submit event with:
+scanForm.addEventListener('submit', function(e) {
+  e.preventDefault();
+  const rawUrl = urlInput.value.trim();
+  if (!rawUrl) return;
+
+  // Toggle loaders...
+  scanningLoader.classList.remove('d-none');
+  resultDashboard.classList.add('d-none');
+  terminalLogBody.innerHTML = "";
+  printTerminalLog("Initiating scan connection...", "info");
+  
+  // Make API Request to Django backend
+  fetch('/api/scan/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRFToken': getCookie('csrftoken')
+    },
+    body: new URLSearchParams({ 'url': rawUrl })
+  })
+  .then(res => {
+    if (!res.ok) throw new Error("Backend classification error status: " + res.status);
+    return res.json();
+  })
+  .then(data => {
+    printTerminalLog("Consensus calculated from random forest classifier.", "success");
+    
+    // Disable scanner loader and render results dashboard
+    scanningLoader.classList.add('d-none');
+    resultDashboard.classList.remove('d-none');
+    
+    // Render the dynamic values returned by your Django view:
+    renderDashboardResults(data);
+  })
+  .catch(err => {
+    printTerminalLog("Inference query failed: " + err.message, "error");
+    scanningLoader.classList.add('d-none');
+  });
+});
+
+function renderDashboardResults(data) {
+  // Convert standard backend JSON to variables
+  const features = data.features;
+  const isPhishing = data.verdict === 'PHISHING';
+  const confidence = data.confidence;
+  const url = data.url;
+
+  // Populate feature matrix UI and verdict cards as in the template completeScanning method
+  ...
+}
+```
+========================================================================
