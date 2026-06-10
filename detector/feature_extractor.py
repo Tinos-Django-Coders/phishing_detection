@@ -15,12 +15,17 @@ WHITELIST = [
     'amazon.com', 'microsoft.com', 'apple.com', 'reddit.com',
     'netflix.com', 'spotify.com', 'whatsapp.com', 'telegram.org',
     'stackoverflow.com', 'medium.com', 'notion.so', 'figma.com',
+
+    # International domains
+    'bbc.co.uk', 'reuters.com', 'theguardian.com', 'nytimes.com',
+    'gov.uk', 'gov.in', 'nic.in', 'amazon.co.uk', 'google.co.uk',
 ]
 
 def is_whitelisted(url: str) -> bool:
     ext = tldextract.extract(url)
-    domain = f"{ext.domain}.{ext.suffix}"
-    return domain in WHITELIST
+    # Check both domain.tld and domain.second.tld
+    domain_simple = f"{ext.domain}.{ext.suffix}"
+    return domain_simple in WHITELIST
 
 
 # ── Core 12 features for the ML model ────────────────────────────────────
