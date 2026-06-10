@@ -151,7 +151,11 @@
           <div class="mono text-light fw-bold" style="font-size: 11px;">RandomForest-v2.0</div>
         </div>
         <button class="btn btn-outline-danger w-100 py-2 active-scale mono text-uppercase d-flex align-items-center justify-content-center gap-2"
-                id="emergencyLockBtn" style="font-size: 12px; border-radius: var(--radius-md);">
+                id="emergencyLockBtn"
+                title="Emergency Lock blacks out the current analyst screen, hides scan output, and marks this local session as isolated until you reload or return to the scanner."
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
+                style="font-size: 12px; border-radius: var(--radius-md);">
           <span class="material-symbols-outlined fs-6">lock</span> EMERGENCY LOCK
         </button>
       </div>
@@ -200,9 +204,15 @@
                                 background-color: var(--surface-container-lowest) !important;
                                 border-color: var(--outline-variant) !important;
                                 color: var(--on-surface) !important;
-                                padding-right: 50px !important;"
+                                padding-right: 92px !important;"
                          placeholder="Paste suspicious URL (e.g., http://paypa1-security-verify.com/login)"
                          required autocomplete="off" spellcheck="false">
+                  <button type="button"
+                          class="btn btn-outline-secondary btn-sm position-absolute top-50 translate-middle-y border-0 d-none"
+                          id="clearUrlBtn" style="right: 48px; color: var(--on-surface-variant);"
+                          title="Clear URL" aria-label="Clear URL">
+                    <span class="material-symbols-outlined fs-5">close</span>
+                  </button>
                   <button type="button"
                           class="btn btn-outline-secondary btn-sm position-absolute top-50 translate-middle-y border-0"
                           id="pasteBtn" style="right: 15px; color: var(--on-surface-variant);"
@@ -611,10 +621,10 @@
                 <div class="mb-3">
                   <div class="d-flex justify-content-between mono mb-1" style="font-size: 11px; color: var(--on-surface-variant);">
                     <span>MODEL ACCURACY</span>
-                    <span class="text-success fw-bold">98.4%</span>
+                    <span class="text-success fw-bold">98.42%</span>
                   </div>
                   <div class="progress" style="height: 5px; background-color: var(--surface-container-high);">
-                    <div class="progress-bar bg-success" style="width: 98.4%"></div>
+                    <div class="progress-bar bg-success" style="width: 98.42%"></div>
                   </div>
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
@@ -793,13 +803,13 @@
                         <td>Safe Domains (0)</td>
                         <td>98.6%</td>
                         <td>98.2%</td>
-                        <td>98.4%</td>
+                        <td>98.42%</td>
                       </tr>
                       <tr>
                         <td>Phishing (1)</td>
                         <td>98.2%</td>
                         <td>98.6%</td>
-                        <td>98.4%</td>
+                        <td>98.42%</td>
                       </tr>
                     </tbody>
                   </table>
@@ -941,8 +951,8 @@
         © 2026 SENTINEL-X CYBERSECURITY INC. ANALYST PORTAL STACK.
       </span>
       <div class="d-flex gap-4">
-        <a href="#" class="text-secondary text-decoration-none mono" style="font-size: 10px;">PRIVACY POLICY</a>
-        <a href="#" class="text-secondary text-decoration-none mono" style="font-size: 10px;">DISCLOSURES</a>
+        <a href="{% url 'privacy_policy' %}" class="text-secondary text-decoration-none mono" style="font-size: 10px;">PRIVACY POLICY</a>
+        <a href="{% url 'disclosures' %}" class="text-secondary text-decoration-none mono" style="font-size: 10px;">DISCLOSURES</a>
       </div>
     </div>
   </footer>
@@ -1091,6 +1101,7 @@
     // Form & scanner elements
     const scanForm          = document.getElementById('scanForm');
     const urlInput          = document.getElementById('urlInput');
+    const clearUrlBtn       = document.getElementById('clearUrlBtn');
     const pasteBtn          = document.getElementById('pasteBtn');
     const skeletonLoader    = document.getElementById('skeletonLoader');
     const scanningLoader    = document.getElementById('scanningLoader');
@@ -1159,6 +1170,10 @@
 
     // ── TOAST SYSTEM ──────────────────────────────────────────────────────────
     const toastStack = document.getElementById('toast-stack');
+
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+      new bootstrap.Tooltip(el);
+    });
 
     function showToast(title, message, type = 'info', durationMs = 4000) {
       const icons = { success: 'check_circle', error: 'error', info: 'info', warn: 'warning' };
@@ -1285,6 +1300,7 @@
         const text = await navigator.clipboard.readText();
         if (text.trim()) {
           urlInput.value = text.trim();
+          updateClearUrlButton();
           urlInput.focus();
           showToast('CLIPBOARD', 'URL pasted from clipboard.', 'info', 2000);
         }
@@ -1292,6 +1308,17 @@
         showToast('PASTE FAILED', 'Allow clipboard access to use this feature.', 'warn');
       }
     });
+
+    function updateClearUrlButton() {
+      clearUrlBtn.classList.toggle('d-none', !urlInput.value.trim());
+    }
+    urlInput.addEventListener('input', updateClearUrlButton);
+    clearUrlBtn.addEventListener('click', () => {
+      urlInput.value = '';
+      updateClearUrlButton();
+      urlInput.focus();
+    });
+    updateClearUrlButton();
 
     // ── FEATURE CARD EXPAND/COLLAPSE ──────────────────────────────────────────
     document.querySelectorAll('.feature-card').forEach(card => {
@@ -1487,6 +1514,7 @@
     reScanBtn.addEventListener('click', () => {
       resultDashboard.classList.add('d-none');
       urlInput.value = '';
+      updateClearUrlButton();
       urlInput.focus();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });

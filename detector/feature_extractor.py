@@ -1,5 +1,6 @@
 import re
 import math
+import socket
 import whois
 import requests
 from urllib.parse import urlparse
@@ -100,24 +101,34 @@ def get_redirect_count(url: str) -> str:
 
 
 # ── Server Country via ipinfo.io ──────────────────────────────────────────
-def get_server_country(domain: str) -> str:
+def get_server_country(host_or_ip: str) -> str:
     try:
-        response = requests.get(f"https://ipinfo.io/{domain}/json", timeout=5)
+        target = host_or_ip
+        if not re.match(r'^\d+\.\d+\.\d+\.\d+$', target):
+            target = socket.gethostbyname(target)
+
+        response = requests.get(f"https://ipinfo.io/{target}/json", timeout=5)
+        response.raise_for_status()
         data = response.json()
         city = data.get('city', '')
+        region = data.get('region', '')
         country = data.get('country', '')
-        if city and country:
-            return f"{city}, {country}"
-        return country or "Unknown"
+        org = data.get('org', '')
+        location_bits = [bit for bit in [city, region, country] if bit]
+        location = ", ".join(location_bits)
+        if location and org:
+            return f"{location} | {org}"
+        return location or org or "Unknown"
     except Exception:
         return "Unknown"
 
 
 # ── Full info for UI display ──────────────────────────────────────────────
 def extract_full_info(url: str) -> dict:
-    parsed = urlparse(url)
+    parsed = urlparse(url if "://" in url else f"http://{url}")
     ext = tldextract.extract(url)
     domain = f"{ext.domain}.{ext.suffix}"
+    hostname = parsed.hostname or domain
 
     features = extract_features(url)
 
@@ -138,7 +149,7 @@ def extract_full_info(url: str) -> dict:
         "domain_age":         get_domain_age(domain),
         "whois_data":         get_whois_privacy(domain),
         "redirect_count":     get_redirect_count(url),
-        "server_origin":      get_server_country(ext.domain),
+        "server_origin":      get_server_country(hostname),
     }
 
     return info
