@@ -4,35 +4,61 @@ import whois
 import requests
 from urllib.parse import urlparse
 from collections import Counter
-import tldextract
 from datetime import datetime
+import tldextract
 
-# ── Core 12 features for the ML model (unchanged) ────────────────────────
+# ── Whitelist of known legitimate domains ─────────────────────────────────
+WHITELIST = [
+    'google.com', 'wikipedia.org', 'github.com', 'youtube.com',
+    'facebook.com', 'twitter.com', 'instagram.com', 'linkedin.com',
+    'amazon.com', 'microsoft.com', 'apple.com', 'reddit.com',
+    'netflix.com', 'spotify.com', 'whatsapp.com', 'telegram.org',
+    'stackoverflow.com', 'medium.com', 'notion.so', 'figma.com',
+]
+
+def is_whitelisted(url: str) -> bool:
+    # Ensure scheme is present for tldextract to parse the domain correctly
+    normalized_url = url
+    if "://" not in url:
+        normalized_url = f"http://{url}"
+    ext = tldextract.extract(normalized_url)
+    domain = f"{ext.domain}.{ext.suffix}"
+    return domain in WHITELIST
+
+
+# ── Core 12 features for the ML model ────────────────────────────────────
 def extract_features(url: str) -> list:
-    parsed = urlparse(url)
-    ext = tldextract.extract(url)
+    # Normalize URL by ensuring a scheme is present so urlparse extracts netloc/path correctly
+    normalized_url = url
+    if "://" not in url:
+        normalized_url = f"http://{url}"
+        
+    parsed = urlparse(normalized_url)
+    ext = tldextract.extract(normalized_url)
 
     features = [
-        len(url),
-        1 if re.match(r'\d+\.\d+\.\d+\.\d+', parsed.netloc) else 0,
-        1 if '@' in url else 0,
-        1 if '//' in url[7:] else 0,
-        len(ext.subdomain.split('.')) if ext.subdomain else 0,
-        1 if parsed.scheme == 'https' else 0,
-        len(ext.domain),
-        len(parsed.path),
-        1 if '-' in ext.domain else 0,
-        sum(c.isdigit() for c in url) / len(url),
-        sum(url.count(c) for c in ['%', '=', '?', '&']),
-        1 if any(t in parsed.path for t in ['.com', '.net', '.org']) else 0,
+        len(url),                                                                # url_length
+        1 if re.match(r'\d+\.\d+\.\d+\.\d+', parsed.netloc) else 0,           # has_ip
+        1 if '@' in url else 0,                                                 # has_at_symbol
+        1 if '//' in url[7:] else 0,                                            # has_double_slash
+        len(ext.subdomain.split('.')) if ext.subdomain and ext.subdomain != 'www' else 0,  # subdomain_count
+        1 if parsed.scheme == 'https' else 0,                                   # has_https
+        len(ext.domain),                                                         # domain_length
+        len(parsed.path),                                                        # path_length
+        1 if '-' in ext.domain else 0,                                          # hyphen_in_domain
+        sum(c.isdigit() for c in url) / len(url) if len(url) > 0 else 0,        # digit_ratio
+        sum(url.count(c) for c in ['%', '=', '?', '&']),                       # special_char_count
+        1 if any(t in parsed.path for t in ['.com', '.net', '.org']) else 0,   # tld_in_path
     ]
     return features
 
 
-# ── URL Entropy (no library needed) ──────────────────────────────────────
+# ── URL Entropy ───────────────────────────────────────────────────────────
 def calc_entropy(url: str) -> float:
     counts = Counter(url)
     length = len(url)
+    if length == 0:
+        return 0.0
     entropy = -sum((c / length) * math.log2(c / length) for c in counts.values())
     return round(entropy, 2)
 
@@ -84,7 +110,7 @@ def get_redirect_count(url: str) -> str:
         return "Unknown"
 
 
-# ── Server Country via ipinfo.io (free, no key needed for low usage) ──────
+# ── Server Country via ipinfo.io ──────────────────────────────────────────
 def get_server_country(domain: str) -> str:
     try:
         response = requests.get(f"https://ipinfo.io/{domain}/json", timeout=5)
@@ -100,33 +126,33 @@ def get_server_country(domain: str) -> str:
 
 # ── Full info for UI display ──────────────────────────────────────────────
 def extract_full_info(url: str) -> dict:
-    parsed = urlparse(url)
-    ext = tldextract.extract(url)
+    normalized_url = url
+    if "://" not in url:
+        normalized_url = f"http://{url}"
+    parsed = urlparse(normalized_url)
+    ext = tldextract.extract(normalized_url)
     domain = f"{ext.domain}.{ext.suffix}"
 
     features = extract_features(url)
 
     info = {
-        # Core feature values for display
-        "url_length":           f"{features[0]} chars {'(Extreme)' if features[0] > 100 else '(Normal)'}",
-        "has_ip":               "True" if features[1] else "False",
-        "has_at_symbol":        "Present" if features[2] else "Not Present",
-        "has_double_slash":     "Detected" if features[3] else "Not Detected",
-        "subdomains":           f"{features[4]} Detected" if features[4] > 0 else "None",
-        "https_protocol":       "Valid (SSL/TLS)" if features[5] else "Not Secure (HTTP)",
-        "domain_length":        str(features[6]),
-        "path_length":          str(features[7]),
-        "hyphen_in_domain":     "Detected" if features[8] else "Not Detected",
-        "digit_ratio":          f"{features[9]:.2f}",
-        "special_char_count":   f"{features[10]} {'(Suspicious)' if features[10] > 5 else '(Normal)'}",
-        "tld_in_path":          "Detected" if features[11] else "Not Detected",
-
-        # Extra info for UI
-        "url_entropy":          calc_entropy(url),
-        "domain_age":           get_domain_age(domain),
-        "whois_data":           get_whois_privacy(domain),
-        "redirect_count":       get_redirect_count(url),
-        "server_origin":        get_server_country(ext.domain),
+        "url_length":         f"{features[0]} chars {'(Extreme)' if features[0] > 100 else '(Normal)'}",
+        "has_ip":             "True" if features[1] else "False",
+        "has_at_symbol":      "Present" if features[2] else "Not Present",
+        "has_double_slash":   "Detected" if features[3] else "Not Detected",
+        "subdomains":         f"{features[4]} Detected" if features[4] > 0 else "None",
+        "https_protocol":     "Valid (SSL/TLS)" if features[5] else "Not Secure (HTTP)",
+        "domain_length":      str(features[6]),
+        "path_length":        str(features[7]),
+        "hyphen_in_domain":   "Detected" if features[8] else "Not Detected",
+        "digit_ratio":        f"{features[9]:.2f}",
+        "special_char_count": f"{features[10]} {'(Suspicious)' if features[10] > 5 else '(Normal)'}",
+        "tld_in_path":        "Detected" if features[11] else "Not Detected",
+        "url_entropy":        calc_entropy(url),
+        "domain_age":         get_domain_age(domain),
+        "whois_data":         get_whois_privacy(domain),
+        "redirect_count":     get_redirect_count(url),
+        "server_origin":      get_server_country(ext.domain),
     }
 
     return info

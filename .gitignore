@@ -1,3 +1,8 @@
 detector/model/phishing_model.pkl
 malicious_phish.csv
 __pycache__/
+venv/
+__pycache__/
+*.pyc
+db.sqlite3
+.env
