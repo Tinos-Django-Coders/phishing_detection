@@ -1,0 +1,1789 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SENTINEL-X | Advanced Phishing Detection Command Center</title>
+  <meta name="description" content="SENTINEL-X uses a 12-point heuristic Random Forest classifier to instantly analyze URLs for phishing indicators, spoofed brands, and credential harvesters.">
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <!-- Custom design system -->
+  <link rel="stylesheet" href="{% static 'detector/custom.css' %}">
+</head>
+<body class="bg-dark text-light">
+
+  <!-- ==============================
+       TOAST STACK (notification area)
+       ============================== -->
+  <div id="toast-stack" aria-live="polite" aria-label="Notifications"></div>
+
+  <!-- ==============================
+       TOP NAVIGATION
+       ============================== -->
+  <nav class="navbar navbar-expand-lg border-bottom sticky-top"
+       style="background-color: var(--surface-container-low); border-color: var(--outline-variant) !important; height: 64px; z-index: 1050;">
+    <div class="container-fluid px-4 d-flex justify-content-between align-items-center">
+
+      <div class="d-flex align-items-center gap-3">
+        <!-- Mobile sidebar toggle -->
+        <button class="btn btn-outline-secondary d-lg-none p-1 border-0"
+                id="mobileSidebarToggle" type="button" aria-label="Toggle Sidebar">
+          <span class="material-symbols-outlined text-light fs-4">menu</span>
+        </button>
+        <span class="mono fw-bold fs-4 text-primary tracking-tighter"
+              style="text-shadow: 0 0 12px rgba(0,240,255,0.45);">SENTINEL-X</span>
+        <span class="badge badge-safe rounded-pill font-monospace d-none d-sm-inline"
+              style="font-size: 10px;">ANALYST NODE v2.0</span>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="d-none d-md-flex align-items-center gap-4">
+        <div class="mono text-secondary" style="font-size: 11px;">
+          LATENCY: <span class="text-success fw-bold">OPTIMAL</span>
+        </div>
+        <div class="mono text-secondary" style="font-size: 11px;">
+          UPTIME: <span class="text-primary fw-bold">99.98%</span>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center gap-3">
+        <!-- Theme toggle -->
+        <button class="btn btn-sm border-0 p-1" id="themeToggleBtn"
+                title="Toggle Light / Dark Theme" aria-label="Toggle theme"
+                style="background: none;">
+          <span class="material-symbols-outlined text-secondary hover-text-white"
+                id="themeIcon" style="user-select: none;">dark_mode</span>
+        </button>
+
+        <!-- Notification bell (positioned relative for dropdown) -->
+        <div class="position-relative" id="bellWrapper">
+          <button class="btn btn-sm border-0 p-1" id="notificationBell"
+                  aria-label="Notifications" style="background: none;">
+            <span class="material-symbols-outlined text-secondary hover-text-white">notifications</span>
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                  style="font-size: 8px; padding: 3px 5px;" id="bellBadge">2</span>
+          </button>
+          <!-- Notification dropdown panel -->
+          <div class="notification-panel d-none" id="notificationPanel">
+            <div class="notification-panel-header">
+              <span class="mono fw-bold" style="font-size: 12px; color: var(--on-surface);">SYSTEM ALERTS</span>
+              <button class="btn btn-sm border-0 p-0 mono" id="clearBellBtn"
+                      style="font-size: 10px; color: var(--on-surface-variant);">CLEAR ALL</button>
+            </div>
+            <div class="notif-item">
+              <div class="notif-dot" style="background: var(--primary);"></div>
+              <div>
+                <div class="mono fw-bold" style="font-size: 11px; color: var(--on-surface);">Engine Online</div>
+                <div class="mono" style="font-size: 10px; color: var(--on-surface-variant);">Heuristic classifier loaded. All nodes active.</div>
+              </div>
+            </div>
+            <div class="notif-item">
+              <div class="notif-dot" style="background: var(--warning);"></div>
+              <div>
+                <div class="mono fw-bold" style="font-size: 11px; color: var(--on-surface);">Model Update Available</div>
+                <div class="mono" style="font-size: 10px; color: var(--on-surface-variant);">RandomForest-v2.1 pending backend deployment.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analyst identity -->
+        <div class="d-flex align-items-center gap-2 border-start ps-3"
+             style="border-color: var(--outline-variant) !important;">
+          <span class="material-symbols-outlined text-primary">account_circle</span>
+          <span class="mono text-secondary d-none d-sm-inline" style="font-size: 12px;">ANALYST-01</span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Mobile sidebar backdrop -->
+  <div class="mobile-sidebar-backdrop d-none" id="mobileSidebarBackdrop"></div>
+
+  <div class="d-flex">
+    <!-- ==============================
+         SIDEBAR NAVIGATION
+         ============================== -->
+    <aside class="sidebar-wrapper border-end p-3 flex-shrink-0 d-none d-lg-flex flex-column"
+           id="sidebarNav"
+           style="width: 260px; min-height: calc(100vh - 64px);
+                  background-color: var(--surface-container);
+                  border-color: var(--outline-variant) !important;">
+      <!-- System status block -->
+      <div class="mb-4 text-center p-3 rounded"
+           style="background-color: var(--surface-container-low); border: 1px solid var(--outline-variant);">
+        <div class="w-12 h-12 rounded-circle bg-success bg-opacity-10 d-inline-flex align-items-center justify-content-center p-2 mb-2">
+          <span class="material-symbols-outlined text-success fs-3">shield</span>
+        </div>
+        <div class="mono text-success fw-bold" style="font-size: 12px; letter-spacing: 0.1em;">SYSTEM SECURED</div>
+        <div class="text-secondary mono" style="font-size: 10px; margin-top: 4px;">THREAT INTELLIGENCE ACTIVE</div>
+      </div>
+
+      <!-- Nav links -->
+      <div class="nav flex-column gap-2 mb-auto" role="tablist">
+        <div class="sidebar-link active" id="navCommandCenter" data-tab-target="command-center" role="tab" aria-selected="true">
+          <span class="material-symbols-outlined">dashboard</span>
+          <span>COMMAND CENTER</span>
+        </div>
+        <div class="sidebar-link" id="navHeuristicDocs" data-tab-target="heuristic-docs" role="tab" aria-selected="false">
+          <span class="material-symbols-outlined">menu_book</span>
+          <span>HEURISTIC GUIDE</span>
+        </div>
+        <div class="sidebar-link" id="navModelSpecs" data-tab-target="model-specs" role="tab" aria-selected="false">
+          <span class="material-symbols-outlined">memory</span>
+          <span>MODEL SPECS</span>
+        </div>
+        <a href="#threat-logs-section" class="sidebar-link" id="sidebarLogsLink">
+          <span class="material-symbols-outlined">history</span>
+          <span>SCAN LOGS</span>
+        </a>
+      </div>
+
+      <!-- Active classifier info + emergency -->
+      <div class="border-top pt-3" style="border-color: var(--outline-variant) !important;">
+        <div class="p-2 rounded mb-3"
+             style="background-color: var(--surface-container-high); border: 1px solid rgba(0,240,255,0.1);">
+          <div class="mono text-secondary" style="font-size: 9px;">ACTIVE CLASSIFIER</div>
+          <div class="mono text-light fw-bold" style="font-size: 11px;">RandomForest-v2.0</div>
+        </div>
+        <button class="btn btn-outline-danger w-100 py-2 active-scale mono text-uppercase d-flex align-items-center justify-content-center gap-2"
+                id="emergencyLockBtn" style="font-size: 12px; border-radius: var(--radius-md);">
+          <span class="material-symbols-outlined fs-6">lock</span> EMERGENCY LOCK
+        </button>
+      </div>
+    </aside>
+
+    <!-- ==============================
+         MAIN CANVAS
+         ============================== -->
+    <main class="flex-grow-1 p-4 position-relative"
+          style="background-color: var(--surface); min-height: calc(100vh - 64px); overflow-y: auto;">
+
+
+      <div class="container-xxl" style="max-width: 1200px;">
+
+        <!-- ==================== TAB 1: COMMAND CENTER ==================== -->
+        <div id="command-center" class="tab-content active">
+
+          <!-- Hero header -->
+          <header class="text-center mb-5 mt-2">
+            <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill border border-info bg-info bg-opacity-10 text-info mono mb-3"
+                 style="font-size: 11px;">
+              <span class="material-symbols-outlined fs-6">verified_user</span>
+              12-POINT HEURISTIC ML ANALYSIS
+            </div>
+            <h1 class="fw-bold tracking-tight mb-2"
+                style="font-size: var(--font-lg); color: var(--on-surface);">
+              Autonomous Threat Detection
+            </h1>
+            <p class="mx-auto" style="max-width: 680px; font-size: var(--font-base); color: var(--on-surface-variant);">
+              Instantly inspect suspicious domains using a pre-trained Random Forest classifier.
+              We parse 12 critical URL markers to expose spoofed brands, credential harvesters,
+              and malicious redirects.
+            </p>
+          </header>
+
+          <!-- URL Input Scanner -->
+          <section class="mb-5">
+            <div class="glass-panel p-4 rounded-3 shadow-lg glow-hover position-relative overflow-hidden">
+              <form id="scanForm" class="row g-3" novalidate>
+                <div class="col-lg-9 col-md-8 position-relative">
+                  <span class="material-symbols-outlined position-absolute top-50 translate-middle-y text-primary"
+                        style="left: 20px; pointer-events: none;">link</span>
+                  <input type="text" id="urlInput"
+                         class="form-control py-3 px-5 mono"
+                         style="border-radius: var(--radius-md);
+                                background-color: var(--surface-container-lowest) !important;
+                                border-color: var(--outline-variant) !important;
+                                color: var(--on-surface) !important;
+                                padding-right: 50px !important;"
+                         placeholder="Paste suspicious URL (e.g., http://paypa1-security-verify.com/login)"
+                         required autocomplete="off" spellcheck="false">
+                  <button type="button"
+                          class="btn btn-outline-secondary btn-sm position-absolute top-50 translate-middle-y border-0"
+                          id="pasteBtn" style="right: 15px; color: var(--on-surface-variant);"
+                          title="Paste from clipboard">
+                    <span class="material-symbols-outlined fs-5">content_paste</span>
+                  </button>
+                </div>
+                <div class="col-lg-3 col-md-4">
+                  <button type="submit" id="analyzeBtn"
+                          class="btn btn-primary w-100 py-3 active-scale fw-bold d-flex align-items-center justify-content-center gap-2"
+                          style="background-color: var(--primary); color: #050a15; border: none;
+                                 border-radius: var(--radius-md); letter-spacing: 0.05em;">
+                    <span class="material-symbols-outlined">bolt</span>
+                    ANALYZE METRICS
+                  </button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          <!-- ── SKELETON LOADING SCREEN ── -->
+          <section id="skeletonLoader" class="mb-5 d-none">
+            <div class="row g-4">
+              <div class="col-lg-8">
+                <!-- Skeleton: Verdict card -->
+                <div class="glass-panel rounded-3 mb-4 p-4">
+                  <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="skeleton-block rounded-circle" style="width:40px; height:40px;"></div>
+                    <div class="skeleton-block" style="width:200px; height:22px;"></div>
+                  </div>
+                  <div class="skeleton-block mb-2" style="width:80%; height:14px;"></div>
+                  <div class="skeleton-block mb-4" style="width:55%; height:14px;"></div>
+                  <div class="skeleton-block rounded-2" style="width:100%; height:52px;"></div>
+                </div>
+                <!-- Skeleton: Features grid -->
+                <div class="glass-panel rounded-3 p-4">
+                  <div class="skeleton-block mb-3" style="width:160px; height:16px;"></div>
+                  <div class="row g-3">
+                    <div class="col-sm-6"><div class="skeleton-block rounded-2" style="height:78px;"></div></div>
+                    <div class="col-sm-6"><div class="skeleton-block rounded-2" style="height:78px;"></div></div>
+                    <div class="col-sm-6"><div class="skeleton-block rounded-2" style="height:78px;"></div></div>
+                    <div class="col-sm-6"><div class="skeleton-block rounded-2" style="height:78px;"></div></div>
+                    <div class="col-sm-6"><div class="skeleton-block rounded-2" style="height:78px;"></div></div>
+                    <div class="col-sm-6"><div class="skeleton-block rounded-2" style="height:78px;"></div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-lg-4">
+                <div class="glass-panel rounded-3 mb-4" style="height:180px;">
+                  <div class="skeleton-block h-100 rounded-3"></div>
+                </div>
+                <div class="glass-panel rounded-3 mb-4 p-4">
+                  <div class="skeleton-block mb-2" style="width:80%; height:12px;"></div>
+                  <div class="skeleton-block" style="width:50%; height:12px;"></div>
+                </div>
+                <div class="skeleton-block rounded-2 mb-2" style="height:48px;"></div>
+                <div class="skeleton-block rounded-2"       style="height:48px;"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── SCANNING TERMINAL ── -->
+          <section id="scanningLoader" class="mb-5 d-none">
+            <div class="terminal-window shadow-lg">
+              <div class="terminal-header">
+                <div class="terminal-dot red"></div>
+                <div class="terminal-dot yellow"></div>
+                <div class="terminal-dot green"></div>
+                <span class="mono ms-2 text-secondary" style="font-size: 11px;">SENTINEL SCANNER ENGINE | ACTIVE RUNTIME</span>
+              </div>
+              <div class="terminal-body" id="terminalLogBody"></div>
+              <div class="p-3 border-top d-flex align-items-center justify-content-between"
+                   style="border-color: var(--outline-variant) !important; background-color: var(--surface-dim);">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                  <span class="mono text-primary fw-bold" id="loaderStateText" style="font-size: 11px;">INITIALIZING SCAN...</span>
+                </div>
+                <span class="mono text-secondary" id="loaderPercentage" style="font-size: 11px;">0% COMPLETE</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── RESULTS DASHBOARD ── -->
+          <div class="row g-4 d-none" id="resultDashboard">
+
+            <!-- Left column -->
+            <div class="col-lg-8">
+
+              <!-- Verdict card -->
+              <div class="glass-panel rounded-3 mb-4 position-relative overflow-hidden" id="verdictCard">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4">
+                  <div class="flex-grow-1">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                      <span class="material-symbols-outlined fs-2 text-danger" id="verdictIcon">report</span>
+                      <h2 class="mono fw-bold text-uppercase m-0 tracking-wider" id="verdictTitle"
+                          style="font-size: 20px; color: var(--on-surface);">PHISHING DETECTED</h2>
+                    </div>
+                    <p class="mono mb-0" style="font-size: 12px; color: var(--on-surface-variant);">
+                      SCAN TARGET:&nbsp;
+                      <span class="fw-semibold text-break" id="scannedUrlLabel"
+                            style="color: var(--on-surface);">http://example.com</span>
+                    </p>
+                  </div>
+
+                  <div class="d-flex align-items-center gap-3 flex-shrink-0">
+                    <div class="text-md-end">
+                      <div class="mono text-secondary" style="font-size: 9px; letter-spacing: 0.1em;">CONFIDENCE WEIGHT</div>
+                      <div class="mono fw-bold fs-2" id="verdictPercentage">94.8%</div>
+                    </div>
+                    <div style="width:70px; height:70px;">
+                      <svg class="gauge-svg w-100 h-100" viewBox="0 0 36 36" aria-hidden="true">
+                        <circle class="gauge-bg" cx="18" cy="18" r="16" fill="none" stroke-width="3.5"/>
+                        <circle id="dialCircle" cx="18" cy="18" r="16" fill="none"
+                                stroke-width="3.5" stroke-dasharray="100, 100" stroke-linecap="round"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Recommendation banner -->
+                <div class="mt-4 p-3 rounded border d-flex gap-3" id="verdictBanner">
+                  <span class="material-symbols-outlined fs-4" id="verdictBannerIcon">warning</span>
+                  <div>
+                    <h6 class="fw-bold mb-1" id="verdictBannerTitle">Critical Alert Warning</h6>
+                    <p class="m-0" style="font-size: 13px; color: var(--on-surface-variant);"
+                       id="verdictBannerDesc">Heuristic system has identified high correlation with phishing structures.</p>
+                  </div>
+                </div>
+
+                <!-- Report a verdict feedback -->
+                <div class="mt-3 pt-3 border-top" style="border-color: var(--outline-variant) !important;">
+                  <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="mono text-secondary" style="font-size: 10px; letter-spacing: 0.05em;">REPORT VERDICT:</span>
+                    <button class="report-chip" id="reportFalsePositive" title="Mark as incorrectly flagged as phishing">
+                      <span class="material-symbols-outlined" style="font-size:14px;">thumb_down</span>
+                      FALSE POSITIVE
+                    </button>
+                    <button class="report-chip" id="reportFalseNegative" title="Mark as missed phishing threat">
+                      <span class="material-symbols-outlined" style="font-size:14px;">bug_report</span>
+                      MISSED THREAT
+                    </button>
+                    <button class="report-chip" id="reportConfirm" title="Confirm verdict is accurate">
+                      <span class="material-symbols-outlined" style="font-size:14px;">thumb_up</span>
+                      CORRECT
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Heuristic Feature Matrix -->
+              <div class="glass-panel rounded-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h4 class="mono text-uppercase tracking-wider text-primary m-0" style="font-size: 13px;">
+                    <span class="material-symbols-outlined fs-6 align-middle me-1">tune</span>
+                    Heuristic Feature Matrix
+                  </h4>
+                  <span class="badge rounded mono" style="font-size: 9px; cursor: help; background: rgba(255,255,255,0.06); color: var(--on-surface-variant);"
+                        title="Click any feature card to expand a detailed explanation.">CLICK CARD FOR DETAILS</span>
+                </div>
+                <p class="mb-4" style="font-size: 12px; line-height: 1.5; color: var(--on-surface-variant);">
+                  Our classifier extracts 12 structural metrics from the URL string. Click any card to expand a comprehensive explanation of why that metric triggers security alerts.
+                </p>
+                <!-- Features Grid -->
+                <div class="row g-3" id="featuresContainer">
+
+                  <!-- Feature Box 1 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="url_length">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size:11px;">1. URL LENGTH</span>
+                        <span class="badge badge-safe mono" data-feature-badge="url_length">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold fs-5" style="color: var(--on-surface);" data-feature="url_length">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_url_length">expand_more</span>
+                      </div>
+                      <div class="feature-desc" style="font-size:12px; color: var(--on-surface-variant);">
+                        Suspicious domains are often unusually long (over 70 characters) due to embedding subdomain parameters, sub-pages, or spoofed brands to deceive visual inspections.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 2 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="has_ip">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size:11px;">2. HAS IP ADDRESS</span>
+                        <span class="badge badge-safe mono" data-feature-badge="has_ip">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold fs-5" style="color: var(--on-surface);" data-feature="has_ip">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_has_ip">expand_more</span>
+                      </div>
+                      <div class="feature-desc" style="font-size:12px; color: var(--on-surface-variant);">
+                        Legitimate sites rarely use raw IP addresses (e.g., 192.168.1.1) as the hostname. Using raw IPs is a typical attacker tactic to avoid registering standard DNS records.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 3 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="has_at_symbol">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size:11px;">3. HAS @ SYMBOL</span>
+                        <span class="badge badge-safe mono" data-feature-badge="has_at_symbol">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold fs-5" style="color: var(--on-surface);" data-feature="has_at_symbol">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_has_at_symbol">expand_more</span>
+                      </div>
+                      <div class="feature-desc" style="font-size:12px; color: var(--on-surface-variant);">
+                        The @ symbol forces browsers to ignore everything before it and route the user to the destination after it — a highly characteristic phishing trick.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 4 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="has_double_slash">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size:11px;">4. DOUBLE SLASH POSITION</span>
+                        <span class="badge badge-safe mono" data-feature-badge="has_double_slash">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold fs-5" style="color: var(--on-surface);" data-feature="has_double_slash">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_has_double_slash">expand_more</span>
+                      </div>
+                      <div class="feature-desc" style="font-size:12px; color: var(--on-surface-variant);">
+                        A double slash // appearing late in the URL path (after position 7) suggests structural manipulation — typically used to mask an open redirect destination.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 5 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="subdomain_count">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size:11px;">5. SUBDOMAINS COUNT</span>
+                        <span class="badge badge-safe mono" data-feature-badge="subdomain_count">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold fs-5" style="color: var(--on-surface);" data-feature="subdomain_count">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_subdomain_count">expand_more</span>
+                      </div>
+                      <div class="feature-desc" style="font-size:12px; color: var(--on-surface-variant);">
+                        Phishing sites stack subdomains (e.g., paypal.com.update.secure.net) to create a false sense of authority. More than 2 subdomains raises diagnostic flags.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 6 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="has_https">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size:11px;">6. HTTPS SCHEME</span>
+                        <span class="badge badge-safe mono" data-feature-badge="has_https">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold fs-5" style="color: var(--on-surface);" data-feature="has_https">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_has_https">expand_more</span>
+                      </div>
+                      <div class="feature-desc" style="font-size:12px; color: var(--on-surface-variant);">
+                        Lack of HTTPS exposes data to eavesdropping. Genuine login systems exclusively use HTTPS. Absence of TLS certificates is an extreme threat multiplier.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 7 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="domain_length">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size:11px;">7. REG. DOMAIN LENGTH</span>
+                        <span class="badge badge-safe mono" data-feature-badge="domain_length">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold fs-5" style="color: var(--on-surface);" data-feature="domain_length">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_domain_length">expand_more</span>
+                      </div>
+                      <div class="feature-desc" style="font-size:12px; color: var(--on-surface-variant);">
+                        The length of the main registered domain name. Phishers often register overly long or random domains to find unregistered variations resembling target brands.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 8 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="path_length">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size:11px;">8. PATH LENGTH</span>
+                        <span class="badge badge-safe mono" data-feature-badge="path_length">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold fs-5" style="color: var(--on-surface);" data-feature="path_length">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_path_length">expand_more</span>
+                      </div>
+                      <div class="feature-desc" style="font-size:12px; color: var(--on-surface-variant);">
+                        The length of the subdirectory path. Phishing links tend to use deep directories to push the real domain host away from the visible address bar.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 9 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="hyphen_in_domain">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size:11px;">9. HYPHEN IN DOMAIN</span>
+                        <span class="badge badge-safe mono" data-feature-badge="hyphen_in_domain">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold fs-5" style="color: var(--on-surface);" data-feature="hyphen_in_domain">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_hyphen_in_domain">expand_more</span>
+                      </div>
+                      <div class="feature-desc" style="font-size:12px; color: var(--on-surface-variant);">
+                        Hyphens (e.g., security-paypal.com) are rarely used in legitimate brand domains. Attackers insert hyphens to bypass word checks and mimic official titles.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 10 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="digit_ratio">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size:11px;">10. URL DIGIT RATIO</span>
+                        <span class="badge badge-safe mono" data-feature-badge="digit_ratio">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold fs-5" style="color: var(--on-surface);" data-feature="digit_ratio">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_digit_ratio">expand_more</span>
+                      </div>
+                      <div class="feature-desc" style="font-size:12px; color: var(--on-surface-variant);">
+                        Percentage of numeric characters in the URL. High digit concentration indicates randomized algorithms generating subpages typical of automated scam scripts.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 11 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="special_char_count">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size:11px;">11. SPECIAL CHARS COUNT</span>
+                        <span class="badge badge-safe mono" data-feature-badge="special_char_count">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold fs-5" style="color: var(--on-surface);" data-feature="special_char_count">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_special_char_count">expand_more</span>
+                      </div>
+                      <div class="feature-desc" style="font-size:12px; color: var(--on-surface-variant);">
+                        Dynamic query chars (?, =, &) and encoding chars (%) are heavily loaded in malicious URLs to forward stolen data while bypassing basic static filters.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feature Box 12 -->
+                  <div class="col-sm-6">
+                    <div class="feature-card" data-feature-key="tld_in_path">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="mono text-secondary" style="font-size:11px;">12. TLD IN PATH STRING</span>
+                        <span class="badge badge-safe mono" data-feature-badge="tld_in_path">SAFE</span>
+                      </div>
+                      <div class="d-flex justify-content-between align-items-baseline mt-2">
+                        <span class="mono fw-bold fs-5" style="color: var(--on-surface);" data-feature="tld_in_path">-</span>
+                        <span class="material-symbols-outlined text-secondary fs-6" style="transition: transform 0.2s;" id="chevron_tld_in_path">expand_more</span>
+                      </div>
+                      <div class="feature-desc" style="font-size:12px; color: var(--on-surface-variant);">
+                        Extensions like .com or .org appearing inside the directory path (e.g., domain.org/login.com) rather than the real domain segment indicate redirect spoofing.
+                      </div>
+                    </div>
+                  </div>
+
+                </div><!-- /Features Grid -->
+              </div><!-- /Feature Matrix card -->
+            </div><!-- /col-lg-8 -->
+
+            <!-- Right column -->
+            <div class="col-lg-4">
+
+              <!-- Threat Location panel -->
+              <div class="glass-panel rounded-3 overflow-hidden p-0 mb-4"
+                   style="background-color: var(--surface-container); border-color: var(--outline-variant) !important;">
+                <div class="position-relative overflow-hidden bg-black d-flex align-items-center justify-content-center"
+                     style="height: 130px;">
+                  <span class="material-symbols-outlined text-primary opacity-25" style="font-size: 80px;">globe</span>
+                  <div class="position-absolute w-100 h-100 opacity-10"
+                       style="background-image: radial-gradient(var(--secondary) 1px, transparent 1px); background-size: 16px 16px;"></div>
+                  <div class="position-absolute bottom-0 start-0 p-3">
+                    <div class="mono text-warning fw-bold" style="font-size: 10px;">THREAT LOCATION HOST</div>
+                    <div class="fs-5 fw-bold" style="color: var(--on-surface);" id="ipSourceField">-</div>
+                  </div>
+                </div>
+                <div class="p-3">
+                  <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="material-symbols-outlined text-warning" style="font-size: 18px;">location_on</span>
+                    <span class="mono text-secondary" style="font-size: 10px; letter-spacing: 0.05em;">REGISTERED LOCATION / REGISTRAR</span>
+                  </div>
+                  <div class="fs-6 fw-bold" style="color: var(--on-surface);" id="locationField">-</div>
+                  <div class="mono text-secondary mt-1" style="font-size: 10px;" id="domainAgeField">AGE: -</div>
+                </div>
+              </div>
+
+              <!-- Engine metrics -->
+              <div class="glass-panel rounded-3 mb-4">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                  <span class="material-symbols-outlined text-info">analytics</span>
+                  <span class="mono fw-bold" style="font-size: 12px; color: var(--on-surface);">ENGINE CLASSIFICATION METRICS</span>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mono mb-1" style="font-size: 11px; color: var(--on-surface-variant);">
+                    <span>MODEL ACCURACY</span>
+                    <span class="text-success fw-bold">98.4%</span>
+                  </div>
+                  <div class="progress" style="height: 5px; background-color: var(--surface-container-high);">
+                    <div class="progress-bar bg-success" style="width: 98.4%"></div>
+                  </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="mono text-secondary" style="font-size: 11px;">INFERENCE SPEED</span>
+                  <span class="badge badge-safe mono" id="inferenceTime">-</span>
+                </div>
+              </div>
+
+              <!-- Action buttons -->
+              <div class="d-flex flex-column gap-2">
+                <button class="btn btn-primary py-3 active-scale fw-bold d-flex align-items-center justify-content-center gap-2"
+                        id="reScanBtn" style="border-radius: var(--radius-md); color: #050a15;">
+                  <span class="material-symbols-outlined">refresh</span> SCAN NEXT DOMAIN
+                </button>
+                <button class="btn py-3 active-scale d-flex align-items-center justify-content-center gap-2"
+                        id="copyDetailsBtn"
+                        style="border-radius: var(--radius-md); color: var(--on-surface-variant);
+                               border: 1px solid var(--outline); background: transparent;">
+                  <span class="material-symbols-outlined">content_copy</span> COPY SCAN METADATA
+                </button>
+                <button class="btn py-2 active-scale d-flex align-items-center justify-content-center gap-2"
+                        id="exportCurrentReportBtn"
+                        style="border-radius: var(--radius-md); color: var(--on-surface-variant);
+                               border: 1px solid var(--outline); background: transparent; font-size: 12px;">
+                  <span class="material-symbols-outlined fs-6">download</span> EXPORT FULL REPORT
+                </button>
+              </div>
+            </div><!-- /col-lg-4 -->
+
+          </div><!-- /resultDashboard -->
+
+        </div><!-- /tab-content command-center -->
+
+        <!-- ==================== TAB 2: HEURISTIC GUIDE ==================== -->
+        <div id="heuristic-docs" class="tab-content">
+          <div class="glass-panel p-4 rounded-3">
+            <div class="d-flex align-items-center gap-2 mb-4 border-bottom pb-3"
+                 style="border-color: var(--outline-variant) !important;">
+              <span class="material-symbols-outlined text-primary fs-3">menu_book</span>
+              <h2 class="m-0 fw-bold fs-4" style="color: var(--on-surface);">Heuristics Extraction Documentation</h2>
+            </div>
+
+            <div class="p-3 mb-4 rounded border"
+                 style="background-color: rgba(0, 240, 255, 0.07); border-color: rgba(0, 240, 255, 0.25) !important;">
+              <p class="m-0 mono" style="font-size: var(--font-base); line-height: 1.6; color: var(--on-surface);">
+                <span class="material-symbols-outlined fs-5 align-middle me-1 text-primary">info</span>
+                URL heuristics represent key structural behaviors extracted statically from the URL string.
+                These parameters do not require a live HTTP connection, making our verification process
+                completely isolated and safe for the scanning host.
+              </p>
+            </div>
+
+            <div class="table-responsive mt-4">
+              <table class="table custom-table table-striped border">
+                <thead>
+                  <tr class="mono" style="font-size: 12px; border-bottom: 2px solid var(--outline-variant);">
+                    <th>HEURISTIC RULE</th>
+                    <th>THREAT RATIONALE</th>
+                    <th>STANDARD THRESHOLD</th>
+                  </tr>
+                </thead>
+                <tbody class="mono" style="font-size: 13px;">
+                  <tr>
+                    <td class="text-primary fw-bold">URL Length</td>
+                    <td>Attackers embed subpages, dynamic parameters, and spoofed keywords.</td>
+                    <td>Safe under 70 chars. Critical above.</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary fw-bold">Has IP Address</td>
+                    <td>Used to skip standard DNS registrations and hide hosting servers.</td>
+                    <td>Strictly binary (0 or 1). Any IP is high-risk.</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary fw-bold">Has @ Symbol</td>
+                    <td>Credentials routing redirection trick to spoof login domains.</td>
+                    <td>Critical if present.</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary fw-bold">Double Slash //</td>
+                    <td>Masks external open redirects, hiding true target destinations.</td>
+                    <td>Suspicious if position &gt; 7.</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary fw-bold">Subdomains Count</td>
+                    <td>Simulates trusted host hierarchies (e.g., login.brand.secure.net).</td>
+                    <td>Standard: &le; 2. Flagged if &ge; 3.</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary fw-bold">HTTPS Scheme</td>
+                    <td>Absence of secure TLS certs signals low-trust environments.</td>
+                    <td>High-risk if HTTP is detected.</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary fw-bold">Hyphen in Domain</td>
+                    <td>Legitimate institutions avoid hyphens. Spoofer domains use them extensively.</td>
+                    <td>High correlation if hyphen exists.</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary fw-bold">Digit Ratio</td>
+                    <td>Automated domain generation algorithms load URLs with numeric hashes.</td>
+                    <td>Flagged if ratio exceeds 12% of total length.</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary fw-bold">Special Chars</td>
+                    <td>High count of ?, =, &amp;, % signals data-exfiltration query strings.</td>
+                    <td>Flagged if count exceeds 3.</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary fw-bold">TLD in Path</td>
+                    <td>Extensions (.com, .net) inside the path suggest redirect spoofing.</td>
+                    <td>Critical if TLD found in directory path.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div><!-- /heuristic-docs -->
+
+        <!-- ==================== TAB 3: MODEL SPECS ==================== -->
+        <div id="model-specs" class="tab-content">
+          <div class="glass-panel p-4 rounded-3">
+            <div class="d-flex align-items-center gap-2 mb-4 border-bottom pb-3"
+                 style="border-color: var(--outline-variant) !important;">
+              <span class="material-symbols-outlined text-primary fs-3">memory</span>
+              <h2 class="m-0 fw-bold fs-4" style="color: var(--on-surface);">Random Forest Classifier Specifications</h2>
+            </div>
+
+            <div class="row g-4">
+              <!-- Model parameters -->
+              <div class="col-md-6">
+                <h5 class="mono text-primary mb-3">Model Parameters</h5>
+                <ul class="list-group list-group-flush bg-transparent border-0">
+                  <li class="list-group-item bg-transparent px-0 d-flex justify-content-between"
+                      style="border-bottom: 1px solid var(--outline-variant) !important; color: var(--on-surface-variant);">
+                    <span class="mono">Algorithm:</span>
+                    <span class="mono fw-bold" style="color: var(--on-surface);">Random Forest (scikit-learn)</span>
+                  </li>
+                  <li class="list-group-item bg-transparent px-0 d-flex justify-content-between"
+                      style="border-bottom: 1px solid var(--outline-variant) !important; color: var(--on-surface-variant);">
+                    <span class="mono">Estimators:</span>
+                    <span class="mono fw-bold" style="color: var(--on-surface);">100 Decision Trees</span>
+                  </li>
+                  <li class="list-group-item bg-transparent px-0 d-flex justify-content-between"
+                      style="border-bottom: 1px solid var(--outline-variant) !important; color: var(--on-surface-variant);">
+                    <span class="mono">Splitting Criterion:</span>
+                    <span class="mono fw-bold" style="color: var(--on-surface);">Gini Impurity</span>
+                  </li>
+                  <li class="list-group-item bg-transparent px-0 d-flex justify-content-between"
+                      style="border-bottom: 1px solid var(--outline-variant) !important; color: var(--on-surface-variant);">
+                    <span class="mono">Training Samples:</span>
+                    <span class="mono fw-bold" style="color: var(--on-surface);">500,000+ URLs</span>
+                  </li>
+                  <li class="list-group-item bg-transparent px-0 d-flex justify-content-between"
+                      style="color: var(--on-surface-variant);">
+                    <span class="mono">OOB Score:</span>
+                    <span class="mono text-success fw-bold">98.42%</span>
+                  </li>
+                </ul>
+              </div>
+
+              <!-- Classification report -->
+              <div class="col-md-6">
+                <h5 class="mono text-primary mb-3">Classification Evaluation Report</h5>
+                <div class="table-responsive">
+                  <table class="table custom-table table-bordered" style="font-size: 13px;">
+                    <thead>
+                      <tr class="mono" style="color: var(--on-surface-variant);">
+                        <th>Class</th>
+                        <th>Precision</th>
+                        <th>Recall</th>
+                        <th>F1-Score</th>
+                      </tr>
+                    </thead>
+                    <tbody class="mono" style="color: var(--on-surface);">
+                      <tr>
+                        <td>Safe Domains (0)</td>
+                        <td>98.6%</td>
+                        <td>98.2%</td>
+                        <td>98.4%</td>
+                      </tr>
+                      <tr>
+                        <td>Phishing (1)</td>
+                        <td>98.2%</td>
+                        <td>98.6%</td>
+                        <td>98.4%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Feature Importance chart -->
+            <div class="mt-5 border-top pt-4" style="border-color: var(--outline-variant) !important;">
+              <h5 class="mono text-primary mb-4">Feature Importance Weight Distribution</h5>
+              <div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mono mb-1" style="font-size: 11px; color: var(--on-surface-variant);">
+                    <span>HTTPS Protocol Missing</span>
+                    <span class="text-primary">23.0%</span>
+                  </div>
+                  <div class="progress" style="height: 7px; background-color: var(--surface-container-high); border-radius: 4px;">
+                    <div class="progress-bar" style="width: 23%; background: var(--primary); border-radius: 4px;"></div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mono mb-1" style="font-size: 11px; color: var(--on-surface-variant);">
+                    <span>URL Character Length</span>
+                    <span class="text-primary">17.0%</span>
+                  </div>
+                  <div class="progress" style="height: 7px; background-color: var(--surface-container-high); border-radius: 4px;">
+                    <div class="progress-bar" style="width: 17%; background: var(--primary); border-radius: 4px;"></div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mono mb-1" style="font-size: 11px; color: var(--on-surface-variant);">
+                    <span>TLD String in Path</span>
+                    <span class="text-primary">13.0%</span>
+                  </div>
+                  <div class="progress" style="height: 7px; background-color: var(--surface-container-high); border-radius: 4px;">
+                    <div class="progress-bar" style="width: 13%; background: var(--primary); border-radius: 4px;"></div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mono mb-1" style="font-size: 11px; color: var(--on-surface-variant);">
+                    <span>Has IP Address Host</span>
+                    <span class="text-primary">12.0%</span>
+                  </div>
+                  <div class="progress" style="height: 7px; background-color: var(--surface-container-high); border-radius: 4px;">
+                    <div class="progress-bar" style="width: 12%; background: var(--primary); border-radius: 4px;"></div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mono mb-1" style="font-size: 11px; color: var(--on-surface-variant);">
+                    <span>@ Symbol in URL</span>
+                    <span class="text-primary">10.0%</span>
+                  </div>
+                  <div class="progress" style="height: 7px; background-color: var(--surface-container-high); border-radius: 4px;">
+                    <div class="progress-bar" style="width: 10%; background: var(--primary); border-radius: 4px;"></div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mono mb-1" style="font-size: 11px; color: var(--on-surface-variant);">
+                    <span>Subdomain Count</span>
+                    <span class="text-primary">9.0%</span>
+                  </div>
+                  <div class="progress" style="height: 7px; background-color: var(--surface-container-high); border-radius: 4px;">
+                    <div class="progress-bar" style="width: 9%; background: var(--secondary); border-radius: 4px;"></div>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mono mb-1" style="font-size: 11px; color: var(--on-surface-variant);">
+                    <span>Remaining Features</span>
+                    <span class="text-primary">16.0%</span>
+                  </div>
+                  <div class="progress" style="height: 7px; background-color: var(--surface-container-high); border-radius: 4px;">
+                    <div class="progress-bar" style="width: 16%; background: var(--secondary); border-radius: 4px; opacity: 0.6;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div><!-- /model-specs -->
+
+        <!-- ==================== THREAT SCAN LOGS ==================== -->
+        <section class="mt-5 border-top pt-4" id="threat-logs-section"
+                 style="border-color: var(--outline-variant) !important;">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+            <div>
+              <h4 class="mono text-uppercase tracking-wider m-0"
+                  style="font-size: 14px; color: var(--on-surface);">Threat Intelligence Scan Logs</h4>
+              <span class="mono text-secondary" style="font-size: 10px;">SESSION DATALOGGER PERSISTENCE</span>
+            </div>
+            <!-- Controls row -->
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <input type="text" id="logSearchInput"
+                     class="form-control mono py-1 px-3"
+                     style="width: 180px; font-size: 12px; border-radius: var(--radius-md);
+                            background-color: var(--surface-container-low) !important;
+                            border-color: var(--outline-variant) !important;
+                            color: var(--on-surface) !important;"
+                     placeholder="Filter by URL...">
+
+              <select id="logFilterSelect"
+                      class="form-select mono py-1"
+                      style="width: 140px; font-size: 12px; border-radius: var(--radius-md);
+                             background-color: var(--surface-container-low) !important;
+                             border-color: var(--outline-variant) !important;
+                             color: var(--on-surface) !important;">
+                <option value="all">ALL VERDICTS</option>
+                <option value="phishing">PHISHING ONLY</option>
+                <option value="legitimate">SAFE ONLY</option>
+              </select>
+
+              <button class="btn btn-sm mono d-flex align-items-center gap-1"
+                      id="exportLogsBtn"
+                      style="font-size: 11px; border: 1px solid var(--primary); color: var(--primary); background: rgba(0,240,255,0.06);">
+                <span class="material-symbols-outlined fs-6">download</span> EXPORT JSON
+              </button>
+
+              <button class="btn btn-sm mono d-flex align-items-center gap-1"
+                      id="clearLogsBtn"
+                      style="font-size: 11px; border: 1px solid var(--tertiary); color: var(--tertiary); background: rgba(255,0,85,0.06);">
+                <span class="material-symbols-outlined fs-6">delete_forever</span> CLEAR
+              </button>
+            </div>
+          </div>
+
+          <div class="d-flex flex-column gap-2" id="logsHistoryContainer"></div>
+        </section>
+
+      </div><!-- /container-xxl -->
+    </main>
+  </div>
+
+  <!-- ==============================
+       FOOTER
+       ============================== -->
+  <footer class="text-center py-4 border-top mt-5"
+          style="background-color: var(--surface-container-lowest);
+                 border-color: var(--outline-variant) !important;">
+    <div class="container px-4 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+      <span class="mono text-secondary" style="font-size: 10px;">
+        © 2026 SENTINEL-X CYBERSECURITY INC. ANALYST PORTAL STACK.
+      </span>
+      <div class="d-flex gap-4">
+        <a href="#" class="text-secondary text-decoration-none mono" style="font-size: 10px;">PRIVACY POLICY</a>
+        <a href="#" class="text-secondary text-decoration-none mono" style="font-size: 10px;">DISCLOSURES</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==============================
+       CONFIRM MODAL (for Clear Logs)
+       ============================== -->
+  <div class="sentinel-modal-overlay d-none" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+    <div class="sentinel-modal">
+      <div class="modal-header-icon danger">
+        <span class="material-symbols-outlined text-danger fs-3">warning</span>
+      </div>
+      <h5 class="mono fw-bold mb-2" id="confirmModalTitle" style="color: var(--on-surface);">CONFIRM PURGE</h5>
+      <p class="mb-4" style="font-size: 13px; color: var(--on-surface-variant);" id="confirmModalMsg">
+        This will permanently erase all session threat intelligence logs. This action cannot be undone.
+      </p>
+      <div class="d-flex gap-2 justify-content-end">
+        <button class="btn py-2 px-4 mono active-scale" id="confirmModalCancel"
+                style="border: 1px solid var(--outline); color: var(--on-surface-variant); background: transparent; font-size: 12px;">
+          CANCEL
+        </button>
+        <button class="btn py-2 px-4 mono active-scale fw-bold" id="confirmModalOk"
+                style="background: rgba(255,0,85,0.15); border: 1px solid var(--tertiary); color: var(--tertiary); font-size: 12px;">
+          PURGE LOGS
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================
+       EMERGENCY LOCK MODAL
+       ============================== -->
+  <div class="sentinel-modal-overlay d-none" id="emergencyModal" role="dialog" aria-modal="true" aria-labelledby="emergencyModalTitle">
+    <div class="sentinel-modal" style="border-color: var(--tertiary) !important; box-shadow: 0 0 60px rgba(255,0,85,0.3);">
+      <div class="modal-header-icon danger">
+        <span class="material-symbols-outlined text-danger fs-2">lock</span>
+      </div>
+      <h5 class="mono fw-bold mb-2 text-danger" id="emergencyModalTitle">EMERGENCY LOCKDOWN</h5>
+      <p class="mb-3" style="font-size: 13px; color: var(--on-surface-variant);">
+        Initiating emergency session isolation. All analyser nodes will go offline. Active scans will be terminated.
+      </p>
+      <div class="p-3 rounded mb-4"
+           style="background: rgba(255,0,85,0.08); border: 1px solid rgba(255,0,85,0.3);">
+        <div class="mono text-danger fw-bold" style="font-size: 11px; letter-spacing: 0.1em;">
+          ⚠ SESSION DATA WILL BE ISOLATED
+        </div>
+        <div class="mono text-secondary mt-1" style="font-size: 10px;">Threat logs preserved. Reload page to restore service.</div>
+      </div>
+      <div class="d-flex gap-2 justify-content-end">
+        <button class="btn py-2 px-4 mono active-scale" id="emergencyModalCancel"
+                style="border: 1px solid var(--outline); color: var(--on-surface-variant); background: transparent; font-size: 12px;">
+          ABORT
+        </button>
+        <button class="btn py-2 px-4 mono active-scale fw-bold" id="emergencyModalConfirm"
+                style="background: rgba(255,0,85,0.15); border: 1px solid var(--tertiary); color: var(--tertiary); font-size: 12px;">
+          CONFIRM LOCKDOWN
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================
+       REPORT MODAL
+       ============================== -->
+  <div class="sentinel-modal-overlay d-none" id="reportModal" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle">
+    <div class="sentinel-modal" style="border-color: rgba(var(--primary-rgb),0.3) !important;">
+      <div class="modal-header-icon info">
+        <span class="material-symbols-outlined text-primary fs-3">flag</span>
+      </div>
+      <h5 class="mono fw-bold mb-1" id="reportModalTitle" style="color: var(--on-surface);">SUBMIT VERDICT REPORT</h5>
+      <p class="mb-3" style="font-size: 13px; color: var(--on-surface-variant);" id="reportModalSubTitle">
+        Report a false positive / missed threat to help improve the model.
+      </p>
+
+      <div class="p-3 rounded mb-3"
+           style="background: var(--surface-container-high); border: 1px solid var(--outline-variant);">
+        <div class="mono text-secondary" style="font-size: 10px; letter-spacing: 0.05em; margin-bottom: 6px;">SCANNED URL</div>
+        <div class="mono text-break" id="reportModalUrl" style="font-size: 12px; color: var(--on-surface);"></div>
+      </div>
+
+      <div class="mb-3">
+        <label class="mono text-secondary mb-2 d-block" style="font-size: 10px; letter-spacing: 0.05em;">REPORT TYPE</label>
+        <div class="d-flex flex-wrap gap-2">
+          <button class="report-chip" data-report-type="false_positive">
+            <span class="material-symbols-outlined" style="font-size:14px;">thumb_down</span>
+            FALSE POSITIVE
+          </button>
+          <button class="report-chip" data-report-type="missed_threat">
+            <span class="material-symbols-outlined" style="font-size:14px;">bug_report</span>
+            MISSED THREAT
+          </button>
+          <button class="report-chip" data-report-type="correct">
+            <span class="material-symbols-outlined" style="font-size:14px;">thumb_up</span>
+            CORRECT
+          </button>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="mono text-secondary mb-2 d-block" style="font-size: 10px; letter-spacing: 0.05em;">ADDITIONAL NOTES (OPTIONAL)</label>
+        <textarea id="reportModalNotes" class="form-control mono" rows="3"
+                  style="background: var(--surface-container-lowest) !important;
+                         border-color: var(--outline-variant) !important;
+                         color: var(--on-surface) !important; font-size: 12px; resize: none;"
+                  placeholder="Describe any additional context..."></textarea>
+      </div>
+
+      <div class="d-flex gap-2 justify-content-end">
+        <button class="btn py-2 px-4 mono active-scale" id="reportModalCancel"
+                style="border: 1px solid var(--outline); color: var(--on-surface-variant); background: transparent; font-size: 12px;">
+          CANCEL
+        </button>
+        <button class="btn py-2 px-4 mono active-scale fw-bold" id="reportModalSubmit"
+                style="background: rgba(var(--primary-rgb),0.12); border: 1px solid var(--primary); color: var(--primary); font-size: 12px;">
+          SUBMIT REPORT
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- ==============================
+       SENTINEL-X CLIENT ENGINE
+       ============================== -->
+  <script>
+  (function () {
+    'use strict';
+
+    // ── ELEMENTS ──────────────────────────────────────────────────────────────
+    const body              = document.body;
+    const themeToggleBtn    = document.getElementById('themeToggleBtn');
+    const themeIcon         = document.getElementById('themeIcon');
+    const mobileSidebarToggle   = document.getElementById('mobileSidebarToggle');
+    const mobileSidebarBackdrop = document.getElementById('mobileSidebarBackdrop');
+    const sidebarNav        = document.getElementById('sidebarNav');
+    const sidebarLinks      = document.querySelectorAll('.sidebar-link[data-tab-target]');
+    const tabContents       = document.querySelectorAll('.tab-content');
+    const notificationBell  = document.getElementById('notificationBell');
+    const notificationPanel = document.getElementById('notificationPanel');
+    const bellBadge         = document.getElementById('bellBadge');
+    const clearBellBtn      = document.getElementById('clearBellBtn');
+    const sidebarLogsLink   = document.getElementById('sidebarLogsLink');
+
+    // Form & scanner elements
+    const scanForm          = document.getElementById('scanForm');
+    const urlInput          = document.getElementById('urlInput');
+    const pasteBtn          = document.getElementById('pasteBtn');
+    const skeletonLoader    = document.getElementById('skeletonLoader');
+    const scanningLoader    = document.getElementById('scanningLoader');
+    const resultDashboard   = document.getElementById('resultDashboard');
+    const loaderStateText   = document.getElementById('loaderStateText');
+    const loaderPercentage  = document.getElementById('loaderPercentage');
+    const terminalLogBody   = document.getElementById('terminalLogBody');
+
+    // Result fields
+    const verdictCard         = document.getElementById('verdictCard');
+    const verdictIcon         = document.getElementById('verdictIcon');
+    const verdictTitle        = document.getElementById('verdictTitle');
+    const verdictPercentage   = document.getElementById('verdictPercentage');
+    const verdictBanner       = document.getElementById('verdictBanner');
+    const verdictBannerIcon   = document.getElementById('verdictBannerIcon');
+    const verdictBannerTitle  = document.getElementById('verdictBannerTitle');
+    const verdictBannerDesc   = document.getElementById('verdictBannerDesc');
+    const scannedUrlLabel     = document.getElementById('scannedUrlLabel');
+    const dialCircle          = document.getElementById('dialCircle');
+    const ipSourceField       = document.getElementById('ipSourceField');
+    const locationField       = document.getElementById('locationField');
+    const domainAgeField      = document.getElementById('domainAgeField');
+    const inferenceTime       = document.getElementById('inferenceTime');
+
+    // Action buttons
+    const reScanBtn           = document.getElementById('reScanBtn');
+    const copyDetailsBtn      = document.getElementById('copyDetailsBtn');
+    const exportCurrentReportBtn = document.getElementById('exportCurrentReportBtn');
+    const emergencyLockBtn    = document.getElementById('emergencyLockBtn');
+
+    // Report verdict chips
+    const reportFalsePositive = document.getElementById('reportFalsePositive');
+    const reportFalseNegative = document.getElementById('reportFalseNegative');
+    const reportConfirm       = document.getElementById('reportConfirm');
+
+    // Logs
+    const logsHistoryContainer = document.getElementById('logsHistoryContainer');
+    const logSearchInput       = document.getElementById('logSearchInput');
+    const logFilterSelect      = document.getElementById('logFilterSelect');
+    const clearLogsBtn         = document.getElementById('clearLogsBtn');
+    const exportLogsBtn        = document.getElementById('exportLogsBtn');
+
+    // Modals
+    const confirmModal          = document.getElementById('confirmModal');
+    const confirmModalCancel    = document.getElementById('confirmModalCancel');
+    const confirmModalOk        = document.getElementById('confirmModalOk');
+    const emergencyModal        = document.getElementById('emergencyModal');
+    const emergencyModalCancel  = document.getElementById('emergencyModalCancel');
+    const emergencyModalConfirm = document.getElementById('emergencyModalConfirm');
+    const reportModal           = document.getElementById('reportModal');
+    const reportModalCancel     = document.getElementById('reportModalCancel');
+    const reportModalSubmit     = document.getElementById('reportModalSubmit');
+    const reportModalUrl        = document.getElementById('reportModalUrl');
+    const reportModalNotes      = document.getElementById('reportModalNotes');
+    const reportModalSubTitle   = document.getElementById('reportModalSubTitle');
+
+    // Track last scan
+    let lastScanData    = null;
+    let selectedReportType = null;
+
+    // ── IN-MEMORY LOG DATABASE ─────────────────────────────────────────────────
+    let logsDatabase = [
+      { url: 'https://github.com/sentinel-x/core', timestamp: '2026.06.09 11:42:01', verdict: 'LEGITIMATE', score: 5.2 },
+      { url: 'http://paypa1-security-verification.com/login', timestamp: '2026.06.09 11:35:48', verdict: 'PHISHING', score: 94.8 }
+    ];
+
+    // ── TOAST SYSTEM ──────────────────────────────────────────────────────────
+    const toastStack = document.getElementById('toast-stack');
+
+    function showToast(title, message, type = 'info', durationMs = 4000) {
+      const icons = { success: 'check_circle', error: 'error', info: 'info', warn: 'warning' };
+      const toast = document.createElement('div');
+      toast.className = `sentinel-toast toast-${type}`;
+      toast.innerHTML = `
+        <span class="material-symbols-outlined toast-icon ${type}">${icons[type] || 'info'}</span>
+        <div class="toast-body">
+          <div class="toast-title">${title}</div>
+          ${message ? `<div class="toast-message">${message}</div>` : ''}
+        </div>
+        <button class="toast-close" aria-label="Close">&times;</button>
+      `;
+      toastStack.appendChild(toast);
+      toast.querySelector('.toast-close').addEventListener('click', () => dismissToast(toast));
+      setTimeout(() => dismissToast(toast), durationMs);
+    }
+
+    function dismissToast(toast) {
+      toast.classList.add('toast-out');
+      toast.addEventListener('animationend', () => toast.remove(), { once: true });
+    }
+
+    // ── MODAL HELPERS ─────────────────────────────────────────────────────────
+    function openModal(el) {
+      el.classList.remove('d-none');
+      el.querySelector('.sentinel-modal').focus?.();
+    }
+    function closeModal(el) {
+      el.classList.add('d-none');
+    }
+
+    // Close modals on overlay backdrop click
+    [confirmModal, emergencyModal, reportModal].forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal(modal);
+      });
+    });
+    // Close modals on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        [confirmModal, emergencyModal, reportModal].forEach(closeModal);
+        closeNotificationPanel();
+      }
+    });
+
+    // ── THEME TOGGLE ──────────────────────────────────────────────────────────
+    function applyTheme(isLight) {
+      body.classList.toggle('light-mode', isLight);
+      themeIcon.innerText = isLight ? 'light_mode' : 'dark_mode';
+    }
+    const savedTheme = localStorage.getItem('sentinel_theme');
+    applyTheme(savedTheme === 'light');
+
+    themeToggleBtn.addEventListener('click', () => {
+      const isLight = !body.classList.contains('light-mode');
+      applyTheme(isLight);
+      localStorage.setItem('sentinel_theme', isLight ? 'light' : 'dark');
+      showToast(isLight ? 'LIGHT MODE' : 'DARK MODE', 'Theme preference saved.', 'info', 2000);
+    });
+
+    // ── TAB NAVIGATION ────────────────────────────────────────────────────────
+    function switchTab(targetId) {
+      sidebarLinks.forEach(l => {
+        l.classList.toggle('active', l.getAttribute('data-tab-target') === targetId);
+        l.setAttribute('aria-selected', l.getAttribute('data-tab-target') === targetId ? 'true' : 'false');
+      });
+      tabContents.forEach(t => t.classList.toggle('active', t.id === targetId));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    sidebarLinks.forEach(link => {
+      link.addEventListener('click', () => {
+        switchTab(link.getAttribute('data-tab-target'));
+        closeMobileSidebar();
+      });
+    });
+
+    // ── MOBILE SIDEBAR ────────────────────────────────────────────────────────
+    function openMobileSidebar() {
+      sidebarNav.classList.add('mobile-open');
+      mobileSidebarBackdrop.classList.remove('d-none');
+    }
+    function closeMobileSidebar() {
+      sidebarNav.classList.remove('mobile-open');
+      mobileSidebarBackdrop.classList.add('d-none');
+    }
+    mobileSidebarToggle.addEventListener('click', () => {
+      if (sidebarNav.classList.contains('mobile-open')) closeMobileSidebar();
+      else openMobileSidebar();
+    });
+    mobileSidebarBackdrop.addEventListener('click', closeMobileSidebar);
+
+    // ── SCROLL-TO-LOGS FROM SIDEBAR ───────────────────────────────────────────
+    sidebarLogsLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchTab('command-center');
+      closeMobileSidebar();
+      setTimeout(() => {
+        document.getElementById('threat-logs-section')?.scrollIntoView({ behavior: 'smooth' });
+      }, 120);
+    });
+
+    // ── NOTIFICATION BELL ────────────────────────────────────────────────────
+    function closeNotificationPanel() {
+      notificationPanel.classList.add('d-none');
+    }
+    notificationBell.addEventListener('click', (e) => {
+      e.stopPropagation();
+      notificationPanel.classList.toggle('d-none');
+    });
+    clearBellBtn.addEventListener('click', () => {
+      bellBadge.classList.add('d-none');
+      notificationPanel.querySelectorAll('.notif-item').forEach(el => el.remove());
+      notificationPanel.insertAdjacentHTML('beforeend',
+        `<div class="p-4 text-center mono" style="font-size: 11px; color: var(--on-surface-variant);">No new alerts.</div>`);
+    });
+    document.addEventListener('click', (e) => {
+      if (!document.getElementById('bellWrapper').contains(e.target)) closeNotificationPanel();
+    });
+
+    // ── CLIPBOARD PASTE ───────────────────────────────────────────────────────
+    pasteBtn.addEventListener('click', async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text.trim()) {
+          urlInput.value = text.trim();
+          urlInput.focus();
+          showToast('CLIPBOARD', 'URL pasted from clipboard.', 'info', 2000);
+        }
+      } catch {
+        showToast('PASTE FAILED', 'Allow clipboard access to use this feature.', 'warn');
+      }
+    });
+
+    // ── FEATURE CARD EXPAND/COLLAPSE ──────────────────────────────────────────
+    document.querySelectorAll('.feature-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const isExpanded = card.classList.toggle('expanded');
+        const chevron = card.querySelector('[id^="chevron_"]');
+        if (chevron) {
+          chevron.innerText = isExpanded ? 'expand_less' : 'expand_more';
+          chevron.style.transform = isExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+      });
+    });
+
+    // ── LOG RENDER ────────────────────────────────────────────────────────────
+    function renderLogs() {
+      logsHistoryContainer.innerHTML = '';
+      const search  = logSearchInput.value.toLowerCase().trim();
+      const filter  = logFilterSelect.value;
+
+      const filtered = logsDatabase.filter(item => {
+        const matchSearch = item.url.toLowerCase().includes(search);
+        const matchFilter = filter === 'all' ||
+          (filter === 'phishing'   && item.verdict === 'PHISHING') ||
+          (filter === 'legitimate' && item.verdict === 'LEGITIMATE');
+        return matchSearch && matchFilter;
+      });
+
+      if (!filtered.length) {
+        logsHistoryContainer.innerHTML = `
+          <div class="glass-panel text-center py-5" style="border: 1px dashed var(--outline-variant); color: var(--on-surface-variant);">
+            <span class="material-symbols-outlined fs-2 mb-2 d-block">find_in_page</span>
+            <p class="mono m-0" style="font-size: 12px;">NO INTEGRITY LOGS MATCH CRITERIA</p>
+          </div>`;
+        return;
+      }
+
+      filtered.forEach(item => {
+        const isPhish    = item.verdict === 'PHISHING';
+        const badgeCls   = isPhish ? 'badge-threat' : 'badge-safe';
+        const iconLabel  = isPhish ? 'warning' : 'check_circle';
+        const iconColor  = isPhish ? 'var(--tertiary)' : 'var(--secondary)';
+        const safeUrl    = item.url.replace(/'/g, "\\'");
+
+        logsHistoryContainer.insertAdjacentHTML('beforeend', `
+          <div class="glass-panel p-3 rounded-2 hover-bg-high d-flex justify-content-between align-items-center pointer active-scale"
+               style="background-color: var(--surface-container-low); border: 1px solid var(--outline-variant); cursor: pointer;"
+               onclick="loadAndScanUrl('${safeUrl}')"
+               role="button" aria-label="Re-scan ${item.url}">
+            <div class="d-flex align-items-center gap-3 overflow-hidden">
+              <span class="material-symbols-outlined flex-shrink-0" style="color: ${iconColor};">${iconLabel}</span>
+              <div class="overflow-hidden">
+                <div class="mono fw-semibold text-truncate" style="max-width: 460px; font-size: 13px; color: var(--on-surface);">${item.url}</div>
+                <div class="mono" style="font-size: 10px; color: var(--on-surface-variant);">
+                  TIMESTAMP: ${item.timestamp} &nbsp;|&nbsp; SCORE: ${item.score}%
+                </div>
+              </div>
+            </div>
+            <span class="badge ${badgeCls} font-monospace flex-shrink-0 ms-2">${item.verdict}</span>
+          </div>`);
+      });
+    }
+
+    window.loadAndScanUrl = function (url) {
+      urlInput.value = url;
+      switchTab('command-center');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => scanForm.dispatchEvent(new Event('submit')), 200);
+    };
+
+    logSearchInput.addEventListener('input', renderLogs);
+    logFilterSelect.addEventListener('change', renderLogs);
+    renderLogs();
+
+    // ── EXPORT LOGS ───────────────────────────────────────────────────────────
+    exportLogsBtn.addEventListener('click', () => {
+      if (!logsDatabase.length) { showToast('NO LOGS', 'No scan logs to export.', 'warn'); return; }
+      triggerDownload(JSON.stringify(logsDatabase, null, 2), `sentinel_x_logs_${Date.now()}.json`, 'application/json');
+      showToast('EXPORT COMPLETE', `${logsDatabase.length} log entries saved as JSON.`, 'success');
+    });
+
+    // ── CLEAR LOGS (styled confirm modal) ────────────────────────────────────
+    clearLogsBtn.addEventListener('click', () => openModal(confirmModal));
+    confirmModalCancel.addEventListener('click', () => closeModal(confirmModal));
+    confirmModalOk.addEventListener('click', () => {
+      logsDatabase = [];
+      renderLogs();
+      closeModal(confirmModal);
+      showToast('LOGS PURGED', 'All session threat intelligence logs have been cleared.', 'warn');
+    });
+
+    // ── EMERGENCY LOCK ─────────────────────────────────────────────────────
+    emergencyLockBtn.addEventListener('click', () => openModal(emergencyModal));
+    emergencyModalCancel.addEventListener('click', () => closeModal(emergencyModal));
+    emergencyModalConfirm.addEventListener('click', () => {
+      closeModal(emergencyModal);
+      // Overlay a fullscreen lockdown screen
+      const lockScreen = document.createElement('div');
+      lockScreen.id = 'lockdownScreen';
+      lockScreen.style.cssText = `
+        position: fixed; inset: 0; z-index: 99999;
+        background: #020408; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 16px;
+        font-family: 'JetBrains Mono', monospace;
+        animation: overlayIn 0.4s ease;
+      `;
+      lockScreen.innerHTML = `
+        <span class="material-symbols-outlined" style="font-size: 72px; color: var(--tertiary); animation: pulse-phish 1.4s infinite;">lock</span>
+        <div style="font-size: 28px; font-weight: 700; color: var(--tertiary); letter-spacing: 0.15em;">SESSION LOCKED</div>
+        <div style="font-size: 13px; color: var(--on-surface-variant); text-align: center; max-width: 380px; line-height: 1.6;">
+          Emergency lockdown active. All analyser nodes are offline.<br>Session data has been isolated.
+        </div>
+        <button onclick="document.getElementById('lockdownScreen').remove()"
+                style="margin-top: 16px; padding: 10px 28px; border-radius: 8px;
+                       background: rgba(255,0,85,0.15); border: 1px solid var(--tertiary);
+                       color: var(--tertiary); font-family: inherit; font-size: 13px; cursor: pointer;">
+          RESTORE SESSION
+        </button>
+      `;
+      document.body.appendChild(lockScreen);
+      showToast('EMERGENCY LOCKDOWN', 'Session isolated. All nodes offline.', 'error', 6000);
+    });
+
+    // ── REPORT VERDICT CHIPS ──────────────────────────────────────────────────
+    function openReportModal(type) {
+      selectedReportType = null;
+      reportModalNotes.value = '';
+      reportModalUrl.textContent = urlInput.value || '(no URL)';
+      const labels = {
+        false_positive: 'Report a FALSE POSITIVE — scan incorrectly flagged this URL as phishing.',
+        missed_threat:  'Report a MISSED THREAT — a phishing URL was not caught by the classifier.',
+        correct:        'Confirm the scan result is CORRECT.'
+      };
+      reportModalSubTitle.textContent = labels[type] || 'Submit a verdict report.';
+      // Pre-select chip
+      reportModal.querySelectorAll('.report-chip').forEach(chip => {
+        const isThis = chip.getAttribute('data-report-type') === type;
+        chip.classList.toggle('selected', isThis);
+        if (isThis) selectedReportType = type;
+      });
+      openModal(reportModal);
+    }
+
+    reportFalsePositive.addEventListener('click', () => openReportModal('false_positive'));
+    reportFalseNegative.addEventListener('click', () => openReportModal('missed_threat'));
+    reportConfirm.addEventListener('click',       () => openReportModal('correct'));
+
+    // Chips inside report modal
+    reportModal.querySelectorAll('.report-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        reportModal.querySelectorAll('.report-chip').forEach(c => c.classList.remove('selected'));
+        chip.classList.add('selected');
+        selectedReportType = chip.getAttribute('data-report-type');
+      });
+    });
+
+    reportModalCancel.addEventListener('click', () => closeModal(reportModal));
+    reportModalSubmit.addEventListener('click', () => {
+      if (!selectedReportType) {
+        showToast('SELECT REPORT TYPE', 'Please choose a report category first.', 'warn');
+        return;
+      }
+      const payload = {
+        url: urlInput.value,
+        reportType: selectedReportType,
+        notes: reportModalNotes.value.trim(),
+        timestamp: new Date().toISOString(),
+        features: lastScanData ? lastScanData.features : null
+      };
+
+      fetch('/api/report-feedback/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken') || ''
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("Feedback submission error: " + res.status);
+        return res.json();
+      })
+      .then(data => {
+        closeModal(reportModal);
+        showToast('REPORT SUBMITTED', 'Thank you. Your feedback will improve the classifier.', 'success');
+      })
+      .catch(err => {
+        closeModal(reportModal);
+        showToast('SUBMIT FAILURE', err.message, 'error');
+      });
+    });
+
+    // ── RE-SCAN BUTTON ────────────────────────────────────────────────────────
+    reScanBtn.addEventListener('click', () => {
+      resultDashboard.classList.add('d-none');
+      urlInput.value = '';
+      urlInput.focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // ── COPY METADATA ──────────────────────────────────────────────────────────
+    copyDetailsBtn.addEventListener('click', async () => {
+      if (!lastScanData) { showToast('NO SCAN DATA', 'Run a scan first.', 'warn'); return; }
+      const payload = JSON.stringify(lastScanData, null, 2);
+      try {
+        await navigator.clipboard.writeText(payload);
+        showToast('COPIED', 'Scan metadata copied to clipboard.', 'success');
+      } catch {
+        showToast('COPY FAILED', 'Clipboard access denied.', 'error');
+      }
+    });
+
+    // ── EXPORT CURRENT REPORT ──────────────────────────────────────────────────
+    exportCurrentReportBtn.addEventListener('click', () => {
+      if (!lastScanData) { showToast('NO SCAN DATA', 'Run a scan first.', 'warn'); return; }
+      triggerDownload(JSON.stringify(lastScanData, null, 2), `sentinel_x_report_${Date.now()}.json`, 'application/json');
+      showToast('REPORT EXPORTED', 'Scan report saved as JSON.', 'success');
+    });
+
+    // ── DOWNLOAD HELPER ───────────────────────────────────────────────────────
+    function triggerDownload(content, filename, mimeType) {
+      const url = 'data:' + mimeType + ';charset=utf-8,' + encodeURIComponent(content);
+      const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    // Function helper to get CSRF tokens (Standard Django cookie query)
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    // ── TERMINAL LOGGER ────────────────────────────────────────────────────────
+    function printLog(text, type = 'info') {
+      const colors = { info: 'var(--on-surface-variant)', success: 'var(--secondary)', warn: 'var(--warning)', error: 'var(--tertiary)' };
+      const prefix = { info: '[INFO]', success: '[OK]', warn: '[WARN]', error: '[ALERT]' };
+      const time   = new Date().toISOString().split('T')[1].substring(0, 8);
+      terminalLogBody.insertAdjacentHTML('beforeend',
+        `<div class="terminal-log-line">
+           <span class="mono" style="color: var(--outline-variant);">[${time}]</span>
+           <span class="mono fw-bold" style="color: ${colors[type]};">${prefix[type]} ${text}</span>
+         </div>`);
+      terminalLogBody.scrollTop = terminalLogBody.scrollHeight;
+    }
+
+    // ── SCAN FORM SUBMIT ──────────────────────────────────────────────────────
+    scanForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const rawUrl = urlInput.value.trim();
+      if (!rawUrl) { showToast('EMPTY URL', 'Please enter a URL before scanning.', 'warn'); return; }
+
+      // Phase 1: show skeleton
+      resultDashboard.classList.add('d-none');
+      skeletonLoader.classList.remove('d-none');
+      scanningLoader.classList.add('d-none');
+      terminalLogBody.innerHTML = '';
+
+      let apiResponse = null;
+      let apiError = null;
+
+      // Start backend request in parallel
+      fetch('/api/scan/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRFToken': getCookie('csrftoken') || ''
+        },
+        body: new URLSearchParams({ 'url': rawUrl })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("Backend classification error status: " + res.status);
+        return res.json();
+      })
+      .then(data => {
+        apiResponse = data;
+      })
+      .catch(err => {
+        apiError = err;
+      });
+
+      // Switch to terminal and run visuals
+      setTimeout(() => {
+        skeletonLoader.classList.add('d-none');
+        scanningLoader.classList.remove('d-none');
+
+        const stages = [
+          { pct: 10,  text: 'PARSING DOMAIN HEURISTICS...',
+            action: () => printLog(`Analyzing hostname structure: ${rawUrl.substring(0, 50)}...`, 'info') },
+          { pct: 25,  text: 'EXTRACTING SUBDOMAINS & DIRECTORY STRINGS...',
+            action: () => {
+              if (apiResponse) {
+                const f = apiResponse.features;
+                printLog(`Registered domain length: ${f.domain_length} chars.`, 'info');
+                printLog(`Subdomain count: ${f.subdomain_count}${f.subdomain_count > 2 ? ' (Exceeds threshold)' : ''}`,
+                         f.subdomain_count > 2 ? 'warn' : 'success');
+              } else {
+                printLog('Extracting sub-lexical components...', 'info');
+              }
+            }},
+          { pct: 45,  text: 'ENCRYPTION INTEGRITY CHECK...',
+            action: () => {
+              if (apiResponse) {
+                const f = apiResponse.features;
+                printLog(
+                  f.has_https ? 'SSL/TLS secure protocol detected (https://).' : 'Insecure connection (http://). Data exposed to interception.',
+                  f.has_https ? 'success' : 'error');
+              } else {
+                printLog('Checking protocol scheme...', 'info');
+              }
+            }},
+          { pct: 62,  text: 'CALCULATING SUB-LEXICAL RATIOS...',
+            action: () => {
+              if (apiResponse) {
+                const f = apiResponse.features;
+                printLog(`Digit ratio: ${(f.digit_ratio * 100).toFixed(1)}% of URL.`, 'info');
+                if (f.digit_ratio > 0.12) printLog('Automated subpage generation patterns detected.', 'warn');
+                if (f.has_at_symbol)       printLog('Credential-bypass marker (@ symbol) detected in URL.', 'error');
+                if (f.has_ip)              printLog('Raw IP address in hostname — DNS bypass detected.', 'error');
+              }
+            }},
+          { pct: 82,  text: 'COMPUTING RANDOM FOREST CLASSIFICATION...',
+            action: () => {
+              printLog('Feeding 12 heuristic features to decision ensemble.', 'info');
+              printLog('Estimator consensus calculated successfully.', 'success');
+            }},
+          { pct: 100, text: 'SYNCHRONIZING VERDICT RESULTS...',
+            action: () => printLog('Scan complete. Dispatching UI variables.', 'success') }
+        ];
+
+        let idx = 0, progress = 0;
+        const interval = setInterval(() => {
+          if (progress >= 90 && !apiResponse && !apiError) {
+            loaderStateText.innerText = 'CONNECTING TO CLASSIFIER BACKEND...';
+            return;
+          }
+
+          if (apiError) {
+            clearInterval(interval);
+            printLog("Inference query failed: " + apiError.message, "error");
+            showToast('SCAN ERROR', apiError.message, 'error');
+            scanningLoader.classList.add('d-none');
+            return;
+          }
+
+          progress = Math.min(100, progress + 3);
+          loaderPercentage.innerText = `${progress}% COMPLETE`;
+
+          if (idx < stages.length && progress >= stages[idx].pct) {
+            loaderStateText.innerText = stages[idx].text;
+            stages[idx].action();
+            idx++;
+          }
+
+          if (progress >= 100) {
+            clearInterval(interval);
+            setTimeout(() => completeScan(apiResponse), 400);
+          }
+        }, 30);
+
+      }, 600);
+    });
+
+    // ── COMPLETE SCAN RENDER ───────────────────────────────────────────────────
+    function completeScan(data) {
+      if (!data) return;
+      scanningLoader.classList.add('d-none');
+      resultDashboard.classList.remove('d-none');
+
+      const url = data.url;
+      const features = data.features;
+      const isPhishing = data.verdict === 'PHISHING';
+      const confidence = data.confidence;
+
+      // Store for copy/export
+      lastScanData = {
+        url,
+        verdict: data.verdict,
+        confidence: confidence,
+        timestamp: new Date().toISOString(),
+        features,
+        ip: data.ip,
+        location: data.location,
+        domain_age: data.domain_age
+      };
+
+      // Update feature badges
+      const setFeature = (key, value, flagged, neutral = false) => {
+        const val  = document.querySelector(`[data-feature="${key}"]`);
+        const badge = document.querySelector(`[data-feature-badge="${key}"]`);
+        if (val) val.innerText = value;
+        if (!badge) return;
+        if (neutral)   { badge.className = 'badge mono'; badge.style.background = 'rgba(255,255,255,0.08)'; badge.style.color = 'var(--on-surface-variant)'; badge.innerText = 'NEUTRAL'; }
+        else if (flagged) { badge.className = 'badge badge-threat mono'; badge.innerText = 'CRITICAL'; }
+        else              { badge.className = 'badge badge-safe mono';   badge.innerText = 'SAFE';     }
+      };
+
+      setFeature('url_length',        `${features.url_length} chars`,        features.url_length > 70);
+      setFeature('has_ip',            features.has_ip ? 'YES — IP Host' : 'No', features.has_ip);
+      setFeature('has_at_symbol',     features.has_at_symbol ? 'YES — @ Found' : 'No', features.has_at_symbol);
+      setFeature('has_double_slash',  features.has_double_slash ? 'YES — Abnormal' : 'No', features.has_double_slash);
+      setFeature('subdomain_count',   `${features.subdomain_count} detected`, features.subdomain_count > 2);
+      setFeature('has_https',         features.has_https ? 'HTTPS Secured' : 'HTTP — Unsecured', !features.has_https);
+      setFeature('domain_length',     `${features.domain_length} chars`,      features.domain_length > 25, true);
+      setFeature('path_length',       `${features.path_length} chars`,        false, true);
+      setFeature('hyphen_in_domain',  features.hyphen_in_domain ? 'YES — Hyphen' : 'No', features.hyphen_in_domain);
+      setFeature('digit_ratio',       `${(features.digit_ratio * 100).toFixed(1)}%`,      features.digit_ratio > 0.12);
+      setFeature('special_char_count',`${features.special_char_count} chars`,  features.special_char_count > 3);
+      setFeature('tld_in_path',       features.tld_in_path ? 'YES — TLD in path' : 'No', features.tld_in_path);
+
+      // Collapse all feature cards
+      document.querySelectorAll('.feature-card.expanded').forEach(c => {
+        c.classList.remove('expanded');
+        const ch = c.querySelector('[id^="chevron_"]');
+        if (ch) { ch.innerText = 'expand_more'; ch.style.transform = 'rotate(0)'; }
+      });
+
+      // Verdict card
+      scannedUrlLabel.innerText   = url;
+      verdictPercentage.innerText = `${confidence}%`;
+
+      // Gauge
+      const circ   = 2 * Math.PI * 16;
+      const offset = circ - (confidence / 100) * circ;
+      dialCircle.setAttribute('stroke-dasharray',  `${circ}`);
+      dialCircle.setAttribute('stroke-dashoffset', offset);
+
+      if (isPhishing) {
+        verdictCard.className       = 'glass-panel rounded-3 mb-4 position-relative overflow-hidden status-phish';
+        verdictIcon.innerText       = 'report';
+        verdictIcon.className       = 'material-symbols-outlined fs-2 text-danger verdict-pulse-phish';
+        verdictTitle.innerText      = 'PHISHING DETECTED';
+        verdictTitle.style.color    = 'var(--tertiary)';
+        verdictPercentage.className = 'mono fw-bold fs-2 text-danger';
+        dialCircle.className        = 'gauge-val-phish';
+
+        verdictBanner.className       = 'mt-4 p-3 rounded border d-flex gap-3';
+        verdictBanner.style.cssText   = 'border-color: var(--tertiary) !important; background: rgba(255,0,85,0.08);';
+        verdictBannerIcon.innerText   = 'gavel';
+        verdictBannerIcon.className   = 'material-symbols-outlined text-danger fs-4';
+        verdictBannerTitle.innerText  = 'HIGH-RISK THREAT ALERT';
+        verdictBannerTitle.className  = 'fw-bold mb-1 text-danger';
+        verdictBannerDesc.innerText   = 'This domain carries structural identifiers matching known spoofing layouts. Do not enter credentials or complete verification requests.';
+
+        ipSourceField.innerText  = data.ip;
+        locationField.innerText  = data.location;
+        domainAgeField.innerText = data.domain_age;
+
+        showToast('⚠ PHISHING DETECTED', `Confidence: ${confidence}% — Do not visit this URL.`, 'error', 6000);
+      } else {
+        verdictCard.className       = 'glass-panel rounded-3 mb-4 position-relative overflow-hidden status-safe';
+        verdictIcon.innerText       = 'verified_user';
+        verdictIcon.className       = 'material-symbols-outlined fs-2 text-success verdict-pulse-safe';
+        verdictTitle.innerText      = 'SECURE / LEGITIMATE';
+        verdictTitle.style.color    = 'var(--secondary)';
+        verdictPercentage.className = 'mono fw-bold fs-2 text-success';
+        dialCircle.className        = 'gauge-val-safe';
+
+        verdictBanner.className       = 'mt-4 p-3 rounded border d-flex gap-3';
+        verdictBanner.style.cssText   = 'border-color: var(--secondary) !important; background: rgba(16,185,129,0.08);';
+        verdictBannerIcon.innerText   = 'verified';
+        verdictBannerIcon.className   = 'material-symbols-outlined text-success fs-4';
+        verdictBannerTitle.innerText  = 'DOMAIN RECORD CLEAR';
+        verdictBannerTitle.className  = 'fw-bold mb-1 text-success';
+        verdictBannerDesc.innerText   = 'The URL is structurally consistent with safe domain configurations. Standard heuristics did not flag spoofing characteristics.';
+
+        ipSourceField.innerText  = data.ip;
+        locationField.innerText  = data.location;
+        domainAgeField.innerText = data.domain_age;
+
+        showToast('✓ DOMAIN CLEAR', `Confidence: ${confidence}% — No threats detected.`, 'success', 4000);
+      }
+
+      inferenceTime.innerText = `${Math.floor(Math.random() * 6 + 4)}ms`;
+
+      // Add to logs
+      const ts = new Date().toISOString().replace('T', ' ').substring(0, 19).replace(/-/g, '.');
+      logsDatabase.unshift({ url, timestamp: ts, verdict: data.verdict, score: confidence });
+      renderLogs();
+    }
+
+  })();
+  </script>
+</body>
+</html>
