@@ -27,6 +27,11 @@
         <a href="{% url 'admin_dashboard_logout' %}" class="btn btn-sm mono" style="border: 1px solid var(--outline-variant); color: var(--on-surface);">Logout</a>
       </nav>
       <section class="container-fluid p-4">
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% else %}{{ message.tags }}{% endif %} py-2 mono mb-4" style="font-size: 12px;">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
         <div class="row g-3 mb-4">
           <div class="col-md-3"><div class="glass-panel"><span class="mono text-secondary" style="font-size: 11px;">TOTAL SCANS</span><div class="fs-2 fw-bold text-primary">{{ total }}</div></div></div>
           <div class="col-md-3"><div class="glass-panel"><span class="mono text-secondary" style="font-size: 11px;">PHISHING</span><div class="fs-2 fw-bold text-danger">{{ phishing }}</div></div></div>
@@ -119,13 +124,13 @@
             </div>
           </div>
         </section>
-        <section class="glass-panel mt-4">
+        <section class="glass-panel mt-4" id="scan-logs-section">
           <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-3">
             <div>
               <h2 class="mono m-0" style="font-size: 14px; color: var(--on-surface);">Scan Logs</h2>
               <span class="mono text-secondary" style="font-size: 10px;">SEARCH, FILTER, AND REVIEW SITE ACTIVITY</span>
             </div>
-            <form class="d-flex flex-wrap gap-2" method="get">
+            <form class="d-flex flex-wrap gap-2" method="get" action="#scan-logs-section">
               <input name="q" value="{{ query }}" class="form-control mono" placeholder="Scan logs..." style="width: 220px; background: var(--surface-container-lowest); border-color: var(--outline-variant); color: var(--on-surface);">
               <select name="verdict" class="form-select mono" style="width: 160px; background: var(--surface-container-lowest); border-color: var(--outline-variant); color: var(--on-surface);">
                 <option value="all" {% if verdict == 'all' %}selected{% endif %}>All verdicts</option>
@@ -135,28 +140,219 @@
               <button class="btn mono" style="background: var(--primary); color: #050a15;">Scan Logs</button>
             </form>
           </div>
-          <div class="table-responsive">
-            <table class="table custom-table align-middle">
-              <thead><tr><th>URL</th><th>Verdict</th><th>Confidence</th><th>IP</th><th>Location</th><th>Time</th></tr></thead>
-              <tbody>
-              {% for log in logs %}
-                <tr>
-                  <td class="text-break">{{ log.url }}</td>
-                  <td><span class="badge {% if log.verdict == 'PHISHING' %}badge-threat{% else %}badge-safe{% endif %} mono">{{ log.verdict }}</span></td>
-                  <td>{{ log.confidence }}%</td>
-                  <td>{{ log.ip_address }}</td>
-                  <td>{{ log.location }}</td>
-                  <td>{{ log.created_at|date:"Y-m-d H:i" }}</td>
-                </tr>
-              {% empty %}
-                <tr><td colspan="6" class="text-center text-secondary mono py-4">No logs found.</td></tr>
-              {% endfor %}
-              </tbody>
-            </table>
+          <div class="row g-4">
+            <div class="col-lg-8">
+              <div class="table-responsive">
+                <table class="table custom-table align-middle">
+                  <thead><tr><th>URL</th><th>User</th><th>Verdict</th><th>Confidence</th><th>IP</th><th>Location</th><th>Time</th><th style="width: 60px;">Action</th></tr></thead>
+                  <tbody>
+                  {% for log in logs %}
+                    <tr>
+                      <td class="text-break">{{ log.url }}</td>
+                      <td class="text-break">{% if log.user %}{{ log.user.get_username }}{% else %}-{% endif %}</td>
+                      <td><span class="badge {% if log.verdict == 'PHISHING' %}badge-threat{% else %}badge-safe{% endif %} mono">{{ log.verdict }}</span></td>
+                      <td>{{ log.confidence }}%</td>
+                      <td>{{ log.ip_address }}</td>
+                      <td>{{ log.location }}</td>
+                      <td>{{ log.created_at|date:"Y-m-d H:i" }}</td>
+                      <td>
+                        <form method="post" action="{% url 'delete_scan_log' log.id %}" class="delete-log-form" style="display:inline;">
+                          {% csrf_token %}
+                          <button class="btn btn-link text-danger p-0 border-0 align-middle" type="submit" title="Delete scan log" style="box-shadow: none; line-height: 1;">
+                            <span class="material-symbols-outlined fs-5">delete</span>
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="8" class="text-center text-secondary mono py-4">No logs found.</td></tr>
+                  {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <div class="glass-panel h-100" id="registered-users-section">
+                <h3 class="mono mb-3" style="font-size:14px;">Registered Users</h3>
+                <div class="list-group list-group-flush">
+                  {% for u in users_summary %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                      <div>
+                        <div class="mono fw-semibold">
+                          {{ u.get_username }}
+                          {% if u.is_staff %}
+                            <span class="badge bg-secondary mono font-monospace ms-1" style="font-size: 8px; padding: 2px 4px;">STAFF</span>
+                          {% endif %}
+                        </div>
+                        <div class="mono text-secondary" style="font-size:11px;">{{ u.email }}</div>
+                      </div>
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="badge badge-safe mono" title="Scan count">{{ u.scan_count }}</span>
+                        {% if u.id != request.user.id %}
+                          <form method="post" action="{% url 'delete_user_account' u.id %}" class="delete-user-form" style="display:inline;">
+                            {% csrf_token %}
+                            <button class="btn btn-link text-danger p-0 border-0 align-middle" type="submit" title="Delete user account" style="box-shadow: none; line-height: 1;">
+                              <span class="material-symbols-outlined fs-5">person_remove</span>
+                            </button>
+                          </form>
+                        {% endif %}
+                      </div>
+                    </div>
+                  {% empty %}
+                    <div class="text-center mono text-secondary">No registered users.</div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </section>
     </main>
   </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. AJAX for Deleting Scan Logs
+      function bindDeleteForms() {
+        document.querySelectorAll('.delete-log-form').forEach(form => {
+          // Prevent multiple bindings
+          if (form.dataset.bound) return;
+          form.dataset.bound = 'true';
+
+          form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!confirm('Are you sure you want to permanently delete this scan log? This action cannot be undone.')) {
+              return;
+            }
+            const row = this.closest('tr');
+            row.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            row.style.opacity = '0.5';
+            
+            fetch(this.action, {
+              method: 'POST',
+              headers: {
+                'X-CSRFToken': this.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+              }
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.status === 'success') {
+                row.style.opacity = '0';
+                row.style.transform = 'translateX(-20px)';
+                setTimeout(() => {
+                  row.remove();
+                  const tbody = document.querySelector('#scan-logs-section tbody');
+                  if (tbody && tbody.children.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-secondary mono py-4">No logs found.</td></tr>';
+                  }
+                }, 300);
+              } else {
+                row.style.opacity = '1';
+                alert(data.message || 'Error deleting log.');
+              }
+            })
+            .catch(err => {
+              row.style.opacity = '1';
+              alert('Network error occurred.');
+            });
+          });
+        });
+      }
+
+      // 2. AJAX for Filtering/Searching Scan Logs
+      const filterForm = document.querySelector('#scan-logs-section form');
+      if (filterForm) {
+        filterForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          const url = new URL(window.location.href);
+          const formData = new FormData(this);
+          for (const [key, val] of formData.entries()) {
+            url.searchParams.set(key, val);
+          }
+          
+          const tableContainer = document.querySelector('#scan-logs-section .table-responsive');
+          if (tableContainer) {
+            tableContainer.style.transition = 'opacity 0.2s ease';
+            tableContainer.style.opacity = '0.4';
+          }
+          
+          fetch(url, {
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          })
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newTable = doc.querySelector('#scan-logs-section .table-responsive');
+            if (newTable && tableContainer) {
+              tableContainer.innerHTML = newTable.innerHTML;
+              tableContainer.style.opacity = '1';
+              bindDeleteForms();
+            }
+            window.history.pushState({}, '', url);
+          })
+          .catch(err => {
+            if (tableContainer) tableContainer.style.opacity = '1';
+            console.error('Filtering failed:', err);
+          });
+        });
+      }
+
+      // 3. AJAX for Deleting Registered Users
+      function bindDeleteUserForms() {
+        document.querySelectorAll('.delete-user-form').forEach(form => {
+          if (form.dataset.bound) return;
+          form.dataset.bound = 'true';
+
+          form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!confirm('Are you sure you want to permanently delete this user account? This action cannot be undone.')) {
+              return;
+            }
+            const item = this.closest('.list-group-item');
+            item.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            item.style.opacity = '0.5';
+            
+            fetch(this.action, {
+              method: 'POST',
+              headers: {
+                'X-CSRFToken': this.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+              }
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.status === 'success') {
+                item.style.opacity = '0';
+                item.style.transform = 'translateX(20px)';
+                setTimeout(() => {
+                  item.remove();
+                  const listGroup = document.querySelector('#registered-users-section .list-group');
+                  if (listGroup && listGroup.querySelectorAll('.list-group-item').length === 0) {
+                    listGroup.innerHTML = '<div class="text-center mono text-secondary py-4">No registered users.</div>';
+                  }
+                }, 300);
+              } else {
+                item.style.opacity = '1';
+                alert(data.message || 'Error deleting user.');
+              }
+            })
+            .catch(err => {
+              item.style.opacity = '1';
+              alert('Network error occurred.');
+            });
+          });
+        });
+      }
+
+      // Initial binding
+      bindDeleteForms();
+      bindDeleteUserForms();
+    });
+  </script>
 </body>
 </html>

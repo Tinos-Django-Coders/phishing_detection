@@ -91,79 +91,11 @@
           </div>
         </div>
 
-        <!-- Analyst identity + profile dropdown -->
-        <div class="position-relative border-start ps-3" id="profileWrapper"
+        <!-- Analyst identity -->
+        <div class="d-flex align-items-center gap-2 border-start ps-3"
              style="border-color: var(--outline-variant) !important;">
-          <button class="btn border-0 p-0 d-flex align-items-center gap-2 profile-btn" id="profileBtn"
-                  aria-label="Analyst profile menu" aria-expanded="false" aria-haspopup="true"
-                  style="background: none;">
-            <div class="profile-avatar">
-              <span class="material-symbols-outlined" style="font-size: 20px;">person</span>
-            </div>
-            <div class="d-none d-sm-flex flex-column align-items-start">
-              <span class="mono fw-bold" style="font-size: 11px; color: var(--on-surface); line-height: 1.2;">ANALYST-01</span>
-              <span class="mono" style="font-size: 9px; color: var(--secondary); letter-spacing: 0.06em;">● ONLINE</span>
-            </div>
-            <span class="material-symbols-outlined d-none d-sm-inline" id="profileChevron"
-                  style="font-size: 16px; color: var(--on-surface-variant); transition: transform 0.2s;">expand_more</span>
-          </button>
-
-          <!-- Profile dropdown panel -->
-          <div class="profile-panel d-none" id="profilePanel" role="menu" aria-labelledby="profileBtn">
-            <!-- Header -->
-            <div class="profile-panel-header">
-              <div class="profile-avatar-lg">
-                <span class="material-symbols-outlined" style="font-size: 28px;">person</span>
-              </div>
-              <div>
-                <div class="mono fw-bold" style="font-size: 13px; color: var(--on-surface);">ANALYST-01</div>
-                <div class="mono" style="font-size: 10px; color: var(--on-surface-variant);">analyst-01@sentinel-x.local</div>
-                <div class="d-flex align-items-center gap-1 mt-1">
-                  <span style="width:6px; height:6px; border-radius:50%; background: var(--secondary); display:inline-block;"></span>
-                  <span class="mono" style="font-size: 9px; color: var(--secondary);">SESSION ACTIVE</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Stats row -->
-            <div class="profile-stats">
-              <div class="profile-stat">
-                <div class="profile-stat-val" id="profileScanCount">0</div>
-                <div class="profile-stat-label">SCANS</div>
-              </div>
-              <div class="profile-stat">
-                <div class="profile-stat-val" id="profilePhishCount">0</div>
-                <div class="profile-stat-label">THREATS</div>
-              </div>
-              <div class="profile-stat">
-                <div class="profile-stat-val" id="profileSafeCount">0</div>
-                <div class="profile-stat-label">CLEAN</div>
-              </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="profile-actions">
-              <button class="profile-action-btn" id="switchAccountBtn" role="menuitem">
-                <span class="material-symbols-outlined" style="font-size: 18px;">switch_account</span>
-                <div>
-                  <div style="font-weight: 600; font-size: 12px;">Switch Account</div>
-                  <div style="font-size: 10px; color: var(--on-surface-variant);">Sign in as a different analyst</div>
-                </div>
-              </button>
-              <button class="profile-action-btn danger" id="deleteAccountBtn" role="menuitem">
-                <span class="material-symbols-outlined" style="font-size: 18px;">delete_forever</span>
-                <div>
-                  <div style="font-weight: 600; font-size: 12px;">Delete Account</div>
-                  <div style="font-size: 10px; opacity: 0.75;">Permanently remove this analyst node</div>
-                </div>
-              </button>
-            </div>
-
-            <!-- Footer -->
-            <div class="profile-panel-footer">
-              <span class="mono" style="font-size: 9px; color: var(--on-surface-variant);">SENTINEL-X ANALYST PORTAL v2.0</span>
-            </div>
-          </div>
+          <span class="material-symbols-outlined text-primary">account_circle</span>
+          <span class="mono text-secondary d-none d-sm-inline" style="font-size: 12px;">ANALYST-01</span>
         </div>
       </div>
     </div>
@@ -1314,6 +1246,19 @@
       }
     } catch (e) {
       console.error('Error loading logs from localStorage:', e);
+    }
+
+    // If server provided initial logs (for authenticated users), use them and overwrite local logs
+    try {
+      const serverLogs = {{ initial_logs_json|default:'[]'|safe }};
+      const isAuth = {{ user_is_authenticated|yesno:"true,false" }};
+      if (isAuth) {
+        // When authenticated, replace local logs with server-provided (may be empty)
+        logsDatabase = Array.isArray(serverLogs) ? serverLogs : [];
+        try { localStorage.setItem('sentinel_scan_logs', JSON.stringify(logsDatabase)); } catch (e) {}
+      }
+    } catch (e) {
+      console.error('Error applying server logs:', e);
     }
 
     // ── TOAST SYSTEM ──────────────────────────────────────────────────────────

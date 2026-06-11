@@ -32,7 +32,31 @@ def dashboard(request):
     """
     Renders the main single page dashboard.
     """
-    return render(request, 'detector/index.html')
+    # Provide initial scan logs for the current user (or recent global logs for anonymous users)
+    if request.user.is_authenticated:
+        recent = ScanLog.objects.filter(user=request.user).order_by('-created_at')[:50]
+    else:
+        recent = ScanLog.objects.all().order_by('-created_at')[:50]
+
+    initial_logs = []
+    for log in recent:
+        initial_logs.append({
+            'id': str(log.id),
+            'url': log.url,
+            'timestamp': log.created_at.strftime('%Y.%m.%d %H:%M:%S'),
+            'verdict': log.verdict,
+            'score': round(log.confidence, 1),
+            'ip': log.ip_address,
+            'location': log.location,
+            'domain_age': log.domain_age,
+            'features': log.features or {}
+        })
+
+    context = {
+        'initial_logs_json': json.dumps(initial_logs),
+        'user_is_authenticated': request.user.is_authenticated,
+    }
+    return render(request, 'detector/index.html', context)
 
 def admin_dashboard_login(request):
     if request.user.is_authenticated and request.user.is_staff:
@@ -61,7 +85,7 @@ def admin_dashboard_login(request):
 def admin_dashboard(request):
     query = request.GET.get('q', '').strip()
     verdict = request.GET.get('verdict', 'all')
-    logs = ScanLog.objects.all()
+    logs = ScanLog.objects.select_related('user').all()
 
     if query:
         logs = logs.filter(Q(url__icontains=query) | Q(ip_address__icontains=query) | Q(location__icontains=query))
@@ -90,6 +114,12 @@ def admin_dashboard(request):
     chart_rows = list(reversed(list(daily_counts)))
     max_count = max([row['total'] for row in chart_rows], default=1)
 
+    # Build a simple users summary for the admin panel
+    User = get_user_model()
+    users_summary = (
+        User.objects.annotate(scan_count=Count('scan_logs')).order_by('-scan_count')[:50]
+    )
+
     context = {
         'logs': recent_logs,
         'query': query,
@@ -108,12 +138,151 @@ def admin_dashboard(request):
         'feedback_missed_threat': feedback_missed_threat,
         'feedback_max': feedback_max,
         'recent_feedback': recent_feedback,
+        'users_summary': users_summary,
     }
     return render(request, 'detector/admin_dashboard.html', context)
 
 def admin_dashboard_logout(request):
     logout(request)
     return redirect('admin_dashboard_login')
+
+@user_passes_test(lambda user: user.is_staff, login_url='admin_dashboard_login')
+def delete_scan_log(request, log_id):
+    if request.method == 'POST':
+        is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', '')
+        try:
+            log = ScanLog.objects.get(id=log_id)
+            log.delete()
+            if is_ajax:
+                return JsonResponse({'status': 'success', 'message': 'Scan log successfully deleted.'})
+            messages.success(request, 'Scan log successfully deleted.')
+        except ScanLog.DoesNotExist:
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': 'Scan log not found.'}, status=404)
+            messages.error(request, 'Scan log not found.')
+    
+    referer = request.META.get('HTTP_REFERER')
+    if referer:
+        if '#scan-logs-section' not in referer:
+            if '?' in referer:
+                if '#' in referer:
+                    referer = referer.split('#')[0] + '#scan-logs-section'
+                else:
+                    referer = referer + '#scan-logs-section'
+            else:
+                referer = referer + '#scan-logs-section'
+        return redirect(referer)
+    return redirect('admin_dashboard')
+
+@user_passes_test(lambda user: user.is_staff, login_url='admin_dashboard_login')
+def delete_user_account(request, user_id):
+    if request.method == 'POST':
+        is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', '')
+        
+        # Prevent self deletion
+        if request.user.id == user_id:
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': 'You cannot delete your own admin account.'}, status=400)
+            messages.error(request, 'You cannot delete your own admin account.')
+            return redirect('admin_dashboard')
+
+        try:
+            User = get_user_model()
+            user_to_delete = User.objects.get(id=user_id)
+            username = user_to_delete.get_username()
+            user_to_delete.delete()
+            if is_ajax:
+                return JsonResponse({'status': 'success', 'message': f'Account "{username}" successfully deleted.'})
+              
+            messages.success(request, f'Account "{username}" successfully deleted.')
+        except User.DoesNotExist:
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': 'User account not found.'}, status=404)
+            messages.error(request, 'User account not found.')
+            
+    referer = request.META.get('HTTP_REFERER')
+    if referer:
+        if '#registered-users-section' not in referer:
+            if '?' in referer:
+                if '#' in referer:
+                    referer = referer.split('#')[0] + '#registered-users-section'
+                else:
+                    referer = referer + '#registered-users-section'
+            else:
+                referer = referer + '#registered-users-section'
+        return redirect(referer)
+    return redirect('admin_dashboard')
+
+
+def user_login(request):
+    if request.user.is_authenticated:
+        if request.user.is_staff:
+            return redirect('admin_dashboard')
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+        email_or_username = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
+        username = email_or_username
+
+        User = get_user_model()
+        user_by_email = User.objects.filter(email__iexact=email_or_username).first()
+        if user_by_email:
+            username = user_by_email.get_username()
+
+        user = authenticate(request, username=username, password=password)
+        if user:
+            login(request, user)
+            if user.is_staff:
+                return redirect('admin_dashboard')
+            return redirect('dashboard')
+
+        messages.error(request, 'Invalid email or password.')
+
+    return render(request, 'detector/login.html')
+
+
+def user_logout(request):
+    logout(request)
+    return redirect('dashboard')
+
+
+def user_signup(request):
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
+        password2 = request.POST.get('password2', '')
+
+        if not username or not email or not password:
+            messages.error(request, 'Please fill all required fields.')
+            return render(request, 'detector/signup.html')
+
+        if password != password2:
+            messages.error(request, 'Passwords do not match.')
+            return render(request, 'detector/signup.html')
+
+        User = get_user_model()
+        if User.objects.filter(username__iexact=username).exists():
+            messages.error(request, 'Username already taken.')
+            return render(request, 'detector/signup.html')
+        if User.objects.filter(email__iexact=email).exists():
+            messages.error(request, 'An account with this email already exists.')
+            return render(request, 'detector/signup.html')
+
+        try:
+            user = User.objects.create_user(username=username, email=email, password=password)
+            user.save()
+            login(request, user)
+            messages.success(request, 'Account created and signed in.')
+            return redirect('dashboard')
+        except Exception as e:
+            messages.error(request, f'Account creation failed: {e}')
+
+    return render(request, 'detector/signup.html')
 
 def legal_page(request, page):
     if page == 'privacy-policy':
@@ -252,6 +421,8 @@ def scan_url_api(request):
         ip_address=ip,
         location=response_data["location"],
         domain_age=response_data["domain_age"],
+        features=feature_dict,
+        user=request.user if request.user.is_authenticated else None,
     )
 
     return JsonResponse(response_data)
