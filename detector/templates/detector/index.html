@@ -195,30 +195,32 @@
           <section class="mb-5">
             <div class="glass-panel p-4 rounded-3 shadow-lg glow-hover position-relative overflow-hidden">
               <form id="scanForm" class="row g-3" novalidate>
-                <div class="col-lg-9 col-md-8 position-relative">
-                  <span class="material-symbols-outlined position-absolute top-50 translate-middle-y text-primary"
-                        style="left: 20px; pointer-events: none;">link</span>
-                  <input type="text" id="urlInput"
-                         class="form-control py-3 px-5 mono"
-                         style="border-radius: var(--radius-md);
-                                background-color: var(--surface-container-lowest) !important;
-                                border-color: var(--outline-variant) !important;
-                                color: var(--on-surface) !important;
-                                padding-right: 92px !important;"
-                         placeholder="Paste suspicious URL (e.g., http://paypa1-security-verify.com/login)"
-                         required autocomplete="off" spellcheck="false">
-                  <button type="button"
-                          class="btn btn-outline-secondary btn-sm position-absolute top-50 translate-middle-y border-0 d-none"
-                          id="clearUrlBtn" style="right: 48px; color: var(--on-surface-variant);"
-                          title="Clear URL" aria-label="Clear URL">
-                    <span class="material-symbols-outlined fs-5">close</span>
-                  </button>
-                  <button type="button"
-                          class="btn btn-outline-secondary btn-sm position-absolute top-50 translate-middle-y border-0"
-                          id="pasteBtn" style="right: 15px; color: var(--on-surface-variant);"
-                          title="Paste from clipboard">
-                    <span class="material-symbols-outlined fs-5">content_paste</span>
-                  </button>
+                <div class="col-lg-9 col-md-8">
+                  <div class="position-relative">
+                    <span class="material-symbols-outlined position-absolute top-50 translate-middle-y text-primary"
+                          style="left: 20px; pointer-events: none;">link</span>
+                    <input type="text" id="urlInput"
+                           class="form-control py-3 px-5 mono"
+                           style="border-radius: var(--radius-md);
+                                  background-color: var(--surface-container-lowest) !important;
+                                  border-color: var(--outline-variant) !important;
+                                  color: var(--on-surface) !important;
+                                  padding-right: 92px !important;"
+                           placeholder="Paste suspicious URL (e.g., http://paypa1-security-verify.com/login)"
+                           required autocomplete="off" spellcheck="false">
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm position-absolute top-50 translate-middle-y border-0 d-none d-flex align-items-center justify-content-center"
+                            id="clearUrlBtn" style="right: 48px; color: var(--on-surface-variant); padding: 0; width: 24px; height: 24px;"
+                            title="Clear URL" aria-label="Clear URL">
+                      <span class="material-symbols-outlined fs-5" style="line-height: 1;">close</span>
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm position-absolute top-50 translate-middle-y border-0 d-flex align-items-center justify-content-center"
+                            id="pasteBtn" style="right: 15px; color: var(--on-surface-variant); padding: 0; width: 24px; height: 24px;"
+                            title="Paste from clipboard">
+                      <span class="material-symbols-outlined fs-5" style="line-height: 1;">content_paste</span>
+                    </button>
+                  </div>
                   <div id="urlInputFeedback" class="mt-2 mono d-flex flex-wrap gap-2" style="font-size: 11px; min-height: 18px;"></div>
                 </div>
                 <div class="col-lg-3 col-md-4">
@@ -1941,7 +1943,7 @@
             return;
           }
 
-          progress = Math.min(100, progress + 3);
+          progress = Math.min(100, progress + 1);
           loaderPercentage.innerText = `${progress}% COMPLETE`;
 
           // Update progress bar
@@ -1963,7 +1965,7 @@
             clearInterval(interval);
             setTimeout(() => completeScan(apiResponse), 400);
           }
-        }, 30);
+        }, 40);
 
       }, 600);
     });
