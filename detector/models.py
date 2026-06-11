@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 class ScanLog(models.Model):
@@ -13,6 +14,14 @@ class ScanLog(models.Model):
     location = models.CharField(max_length=255, blank=True)
     domain_age = models.CharField(max_length=120, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='scan_logs'
+    )
+    features = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ['-created_at']

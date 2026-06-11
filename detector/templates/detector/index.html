@@ -91,11 +91,16 @@
           </div>
         </div>
 
-        <!-- Analyst identity -->
+        <!-- Analyst identity / Sign-in -->
         <div class="d-flex align-items-center gap-2 border-start ps-3"
              style="border-color: var(--outline-variant) !important;">
           <span class="material-symbols-outlined text-primary">account_circle</span>
-          <span class="mono text-secondary d-none d-sm-inline" style="font-size: 12px;">ANALYST-01</span>
+          {% if request.user.is_authenticated %}
+            <span class="mono text-secondary d-none d-sm-inline" style="font-size: 12px;">{{ request.user.get_username }}</span>
+            <a href="{% url 'user_logout' %}" class="btn btn-sm btn-link mono text-secondary ms-2">Logout</a>
+          {% else %}
+            <a href="{% url 'user_login' %}" class="mono text-secondary d-none d-sm-inline" style="font-size:12px;">Sign in</a>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -1238,6 +1243,19 @@
       }
     } catch (e) {
       console.error('Error loading logs from localStorage:', e);
+    }
+
+    // If server provided initial logs (for authenticated users), use them and overwrite local logs
+    try {
+      const serverLogs = {{ initial_logs_json|default:'[]'|safe }};
+      const isAuth = {{ user_is_authenticated|yesno:"true,false" }};
+      if (isAuth) {
+        // When authenticated, replace local logs with server-provided (may be empty)
+        logsDatabase = Array.isArray(serverLogs) ? serverLogs : [];
+        try { localStorage.setItem('sentinel_scan_logs', JSON.stringify(logsDatabase)); } catch (e) {}
+      }
+    } catch (e) {
+      console.error('Error applying server logs:', e);
     }
 
     // ── TOAST SYSTEM ──────────────────────────────────────────────────────────

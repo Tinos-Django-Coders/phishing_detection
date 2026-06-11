@@ -135,24 +135,47 @@
               <button class="btn mono" style="background: var(--primary); color: #050a15;">Scan Logs</button>
             </form>
           </div>
-          <div class="table-responsive">
-            <table class="table custom-table align-middle">
-              <thead><tr><th>URL</th><th>Verdict</th><th>Confidence</th><th>IP</th><th>Location</th><th>Time</th></tr></thead>
-              <tbody>
-              {% for log in logs %}
-                <tr>
-                  <td class="text-break">{{ log.url }}</td>
-                  <td><span class="badge {% if log.verdict == 'PHISHING' %}badge-threat{% else %}badge-safe{% endif %} mono">{{ log.verdict }}</span></td>
-                  <td>{{ log.confidence }}%</td>
-                  <td>{{ log.ip_address }}</td>
-                  <td>{{ log.location }}</td>
-                  <td>{{ log.created_at|date:"Y-m-d H:i" }}</td>
-                </tr>
-              {% empty %}
-                <tr><td colspan="6" class="text-center text-secondary mono py-4">No logs found.</td></tr>
-              {% endfor %}
-              </tbody>
-            </table>
+          <div class="row g-4">
+            <div class="col-lg-8">
+              <div class="table-responsive">
+                <table class="table custom-table align-middle">
+                  <thead><tr><th>URL</th><th>User</th><th>Verdict</th><th>Confidence</th><th>IP</th><th>Location</th><th>Time</th></tr></thead>
+                  <tbody>
+                  {% for log in logs %}
+                    <tr>
+                      <td class="text-break">{{ log.url }}</td>
+                      <td class="text-break">{% if log.user %}{{ log.user.get_username }}{% else %}-{% endif %}</td>
+                      <td><span class="badge {% if log.verdict == 'PHISHING' %}badge-threat{% else %}badge-safe{% endif %} mono">{{ log.verdict }}</span></td>
+                      <td>{{ log.confidence }}%</td>
+                      <td>{{ log.ip_address }}</td>
+                      <td>{{ log.location }}</td>
+                      <td>{{ log.created_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="7" class="text-center text-secondary mono py-4">No logs found.</td></tr>
+                  {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <div class="glass-panel h-100">
+                <h3 class="mono mb-3" style="font-size:14px;">Registered Users</h3>
+                <div class="list-group list-group-flush">
+                  {% for u in users_summary %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                      <div>
+                        <div class="mono fw-semibold">{{ u.get_username }}</div>
+                        <div class="mono text-secondary" style="font-size:11px;">{{ u.email }}</div>
+                      </div>
+                      <span class="badge badge-safe mono">{{ u.scan_count }}</span>
+                    </div>
+                  {% empty %}
+                    <div class="text-center mono text-secondary">No registered users.</div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </section>
